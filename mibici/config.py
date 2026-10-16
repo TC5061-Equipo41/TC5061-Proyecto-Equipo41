@@ -15,11 +15,14 @@ RAW_DATA_DIR = DATA_DIR / "raw"
 INTERIM_DATA_DIR = DATA_DIR / "interim"
 PROCESSED_DATA_DIR = DATA_DIR / "processed"
 EXTERNAL_DATA_DIR = DATA_DIR / "external"
-
+DEPRECATED_STATION_IDS_REPLACEMENTS = {116: 248, 138: 249}
 MODELS_DIR = PROJ_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
+CURRENT_MONTH_DATA = ['datos_abiertos_2026_09.csv']
+THREE_MONTH_DATA = ['datos_abiertos_2026_08.csv', 'datos_abiertos_2026_07.csv', 'datos_abiertos_2026_06.csv']
+STATIONS_DATA = 'nomenclatura_2026_09.csv'
 
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
