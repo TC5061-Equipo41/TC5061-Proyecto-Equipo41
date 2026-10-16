@@ -26,7 +26,7 @@ A short description of the project..
 │                         the creator's initials, and a short `-` delimited description, e.g.
 │                         `1.0-jqp-initial-data-exploration`.
 │
-├── pyproject.toml     <- Project configuration file with package metadata for 
+├── pyproject.toml     <- Project configuration file with package metadata for
 │                         mibici and configuration for tools like black
 │
 ├── references         <- Data dictionaries, manuals, and all other explanatory materials.
@@ -49,13 +49,25 @@ A short description of the project..
     │
     ├── features.py             <- Code to create features for modeling
     │
-    ├── modeling                
-    │   ├── __init__.py 
-    │   ├── predict.py          <- Code to run model inference with trained models          
+    ├── modeling
+    │   ├── __init__.py
+    │   ├── predict.py          <- Code to run model inference with trained models
     │   └── train.py            <- Code to train models
     │
     └── plots.py                <- Code to create visualizations
 ```
 
---------
+---
 
+## Como cargar el dataset inicial
+
+1. Descarga los datos de nomenclatura y viajes mensuales https://mibici.net/es/datos-abiertos/
+2. Revisa las declaraciones de `config.py`, modifica a partir de los datos que necesites
+
+```
+    CURRENT_MONTH_DATA = ['datos_abiertos_2026_09.csv']
+    THREE_MONTH_DATA = ['datos_abiertos_2026_08.csv', 'datos_abiertos_2026_07.csv', 'datos_abiertos_2026_06.csv']
+    STATIONS_DATA = 'nomenclatura_2026_09.csv'
+```
+
+3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
