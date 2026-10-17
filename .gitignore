@@ -193,3 +193,8 @@ cython_debug/
 # MLFlow
 mlflow.db
 /mlartifacts
+
+# Datos locales de MiBici: no subir a Git
+/data/raw/
+/data/interim/
+/data/processed/
