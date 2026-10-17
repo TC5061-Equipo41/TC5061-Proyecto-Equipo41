@@ -198,3 +198,6 @@ mlflow.db
 /data/raw/
 /data/interim/
 /data/processed/
+# MLflow
+mlruns/
+mlartifacts/
