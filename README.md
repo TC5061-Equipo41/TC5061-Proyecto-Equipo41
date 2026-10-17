@@ -71,3 +71,78 @@ A short description of the project..
 ```
 
 3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
+## P3. Agrupamiento de estaciones por patrones de uso
+
+### Pregunta de negocio
+
+¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
+
+### Objetivo
+
+Identificar grupos de estaciones de MiBici con características de uso similares mediante un modelo de clustering. Los resultados pueden servir como apoyo para analizar la distribución de la demanda y explorar oportunidades de expansión del sistema.
+
+### Datos y características
+
+El análisis utiliza datos de viajes de MiBici y la información de nomenclatura de estaciones. Se construye un conjunto de características agregadas por estación, que incluye:
+
+- Número de viajes de salida y llegada.
+- Viajes de salida por franja horaria.
+- Viajes de salida durante los fines de semana.
+- Duración promedio de los viajes.
+- Nombre y coordenadas geográficas de las estaciones.
+
+Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el algoritmo de clustering.
+
+### Modelo y evaluación
+
+Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (*silhouette score*), con el objetivo de comparar la separación y cohesión de los grupos.
+
+El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
+
+### Ejecución de P3
+
+Desde la raíz del repositorio, ejecuta:
+
+```bash
+python -m mibici.modeling.p3.train
+```
+
+Para generar las asignaciones de grupos:
+
+```bash
+python -m mibici.modeling.p3.predict
+```
+
+Para generar el mapa de estaciones:
+
+```bash
+python -m mibici.modeling.p3.plot_clusters
+```
+
+### Resultados generados
+
+- `models/p3_kmeans.pkl`: modelo entrenado.
+- `data/processed/p3_station_features.csv`: características agregadas por estación.
+- `data/processed/p3_station_clusters.csv`: asignación de las estaciones a sus grupos.
+- `reports/figures/p3_clusters.png`: gráfica de evaluación del clustering.
+- `reports/figures/p3_station_map.png`: mapa geográfico de las estaciones agrupadas.
+
+### Interpretación
+
+Los grupos permiten distinguir estaciones con diferentes niveles de actividad. La interpretación geográfica debe realizarse con el mapa y las características de cada grupo; no se debe asumir que los clústeres representan zonas geográficas claramente separadas sin evidencia adicional.
+
+### Seguimiento de experimentos
+
+Los experimentos de P3 se registran en MLflow bajo el experimento `mibici-p3-clustering`. Se guardan parámetros, métricas, etiquetas y artefactos para documentar y comparar las ejecuciones.
+
+### Resultados e interpretación de los clústeres
+
+El modelo K-Means seleccionó dos clústeres como resultado de la evaluación mediante el coeficiente de silueta. El conjunto analizado contiene 471 estaciones: 278 pertenecen al clúster 0 y 193 al clúster 1.
+
+El clúster 0 presenta un promedio de 5,080.12 viajes de salida y 5,074.35 viajes de llegada por estación. En contraste, el clúster 1 registra 1,109.37 viajes de salida y 1,117.68 viajes de llegada por estación.
+
+La duración promedio de los viajes es similar en ambos grupos: 10.94 minutos en el clúster 0 y 11.04 minutos en el clúster 1. Estos resultados sugieren que la principal diferencia entre los grupos está relacionada con el volumen de uso de las estaciones.
+
+Para apoyar la interpretación espacial, se utiliza el mapa de estaciones agrupadas. La ubicación geográfica debe analizarse junto con los patrones de uso, sin asumir que cada clúster corresponde a una zona geográfica claramente delimitada.
+
+Estos resultados pueden servir como punto de partida para estudiar la distribución de la demanda y detectar estaciones que podrían requerir análisis adicional para la planeación del sistema.

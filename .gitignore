@@ -198,3 +198,13 @@ mlflow.db
 /data/raw/
 /data/interim/
 /data/processed/
+
+
+# Modelos serializados generados localmente
+/models/
+*.pkl
+*.joblib
+
+# MLflow y resultados locales
+mlruns/
+mlartifacts/
