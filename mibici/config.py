@@ -35,14 +35,13 @@ YEARLY_DATA = [
         'datos_abiertos_2025_12.csv', 
         'datos_abiertos_2025_11.csv',
         'datos_abiertos_2025_10.csv',
-        'datos_abiertos_2025_09.csv', 
     ]
 STATIONS_DATA = 'nomenclatura_2026_09.csv'
 
 DATA_METADATA = {
     'monthly': YEARLY_DATA,
     'stations': STATIONS_DATA,
-    'data_range': {'from': '2025_09', 'to': '2026_09'}
+    'data_range': {'from': '2025_10', 'to': '2026_09'}
 }
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135

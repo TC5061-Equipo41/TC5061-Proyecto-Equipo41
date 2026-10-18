@@ -52,15 +52,12 @@ def load_monthly_trips(csv_names: list[str]) -> pd.DataFrame:
     frames = []
 
     for name in csv_names:
-        path = RAW_DATA_DIR / name
+        file_path = RAW_DATA_DIR / name
 
         try:
-            frame = pd.read_csv(path)
+            frame = pd.read_csv(file_path, encoding="utf-8")
         except UnicodeDecodeError:
-            frame = pd.read_csv(
-                path,
-                encoding="cp1252",
-            )
+            frame = pd.read_csv(file_path, encoding="cp1252")
 
         frames.append(clean_trips(frame))
 
