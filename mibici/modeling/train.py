@@ -34,7 +34,6 @@ def execute_runs():
     base_dataset = build_initial_dataset(DATA_METADATA)
     data_version = "1.0.0"
     date_range = DATA_METADATA["data_range"]
-    mlflow.set_experiment(EXPERIMENT_NAME)
     
     # P1
     train_p1_model(
