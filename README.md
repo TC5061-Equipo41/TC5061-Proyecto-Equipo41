@@ -59,15 +59,47 @@ A short description of the project..
 
 ---
 
-## Como cargar el dataset inicial
+### Setup inicial
+
+1. Crear .venv `python -m venv .venv`
+2. Activar .venv `source .venv/bin/activate`
+3. Instalar dependencias `pip install -r requirements.txt`
+
+---
+
+### Como cargar el dataset inicial para uso en notebooks
 
 1. Descarga los datos de nomenclatura y viajes mensuales https://mibici.net/es/datos-abiertos/
 2. Revisa las declaraciones de `config.py`, modifica a partir de los datos que necesites
 
 ```
-    CURRENT_MONTH_DATA = ['datos_abiertos_2026_09.csv']
-    THREE_MONTH_DATA = ['datos_abiertos_2026_08.csv', 'datos_abiertos_2026_07.csv', 'datos_abiertos_2026_06.csv']
-    STATIONS_DATA = 'nomenclatura_2026_09.csv'
+
+DATA_METADATA = {
+    'monthly': YEARLY_DATA,
+    'stations': STATIONS_DATA,
+    'data_range': {'from': '2025_09', 'to': '2026_09'}
+}
 ```
 
 3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
+
+---
+
+### Como ejecutar el experimento
+
+1. Correr el servidor de MLFlow local, ajusta to host y puerto de ser necesario
+
+```
+mlflow server --backend-store-uri sqlite:///mlflow.db  --host 127.0.0.1 --port 5000
+```
+
+2. Agregar las siguientes variables de ambiente a .env. Ajusta de ser necesario
+
+```
+MLFLOW_URI="http://127.0.0.1:5000"
+```
+
+3. Corre `mibici/modeling/train.py`, asegurate de antes haber completado el `paso 1` y `paso 2` de la sección `Como cargar el dataset inicial para uso en notebooks` de este README.md
+4. Revisa resultados en http://127.0.0.1:5000
+
+---
