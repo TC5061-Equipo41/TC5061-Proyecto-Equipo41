@@ -46,7 +46,29 @@ def execute_runs():
     # P2: clasificación de riesgo
     train_p2_model(base_dataset, data_version, date_range)
 
-    # P3
+
+    # P3: generar dataset anual y features antes de entrenar
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "mibici.P3.build_dataset",
+        ],
+        cwd=PROJ_ROOT,
+        check=True,
+    )
+
+    subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "mibici.P3.features",
+        ],
+        cwd=PROJ_ROOT,
+        check=True,
+    )
+
+    # Entrenamiento y registro en MLflow
     subprocess.run(
         [
             sys.executable,
@@ -60,6 +82,7 @@ def execute_runs():
         cwd=PROJ_ROOT,
         check=True,
     )
+
 
 
 if __name__ == "__main__":

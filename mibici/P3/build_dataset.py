@@ -8,9 +8,9 @@ from mibici.config import (
 )
 from mibici.dataset import (
     clean_trips,
+    delete_duplicates_and_reset_idx,
     get_clean_stations_df,
     join_station_metadata,
-    _deduplicate_trips,
 )
 
 MONTHLY_FILES = [
@@ -42,7 +42,9 @@ def main():
         frame = pd.read_csv(path, encoding=encoding)
         frames.append(clean_trips(frame))
 
-    trips = _deduplicate_trips(pd.concat(frames, ignore_index=True))
+    trips = delete_duplicates_and_reset_idx(
+    pd.concat(frames, ignore_index=True)
+    )
     stations = get_clean_stations_df(STATIONS_DATA)
     result = join_station_metadata(trips, stations)
 
