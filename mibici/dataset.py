@@ -50,11 +50,23 @@ def build_initial_dataset(
 def load_monthly_trips(csv_names: list[str]) -> pd.DataFrame:
     """Lee los archivos CSV mensuales, limpia los datos y elimina los duplicados."""
     frames = []
+
     for name in csv_names:
-        frame = pd.read_csv(RAW_DATA_DIR / name)
+        path = RAW_DATA_DIR / name
+
+        try:
+            frame = pd.read_csv(path)
+        except UnicodeDecodeError:
+            frame = pd.read_csv(
+                path,
+                encoding="cp1252",
+            )
+
         frames.append(clean_trips(frame))
 
-    return delete_duplicates_and_reset_idx(pd.concat(frames, ignore_index=True))
+    return delete_duplicates_and_reset_idx(
+        pd.concat(frames, ignore_index=True)
+    )
 
 
 def clean_trips(frame: pd.DataFrame) -> pd.DataFrame:
