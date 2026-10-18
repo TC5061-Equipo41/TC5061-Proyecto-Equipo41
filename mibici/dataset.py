@@ -127,10 +127,6 @@ def join_station_metadata(
 
 
 if __name__ == "__main__":
-    # build_initial_dataset(CURRENT_MONTH_DATA, STATIONS_DATA, '2026_09', True)
-    # build_initial_dataset(CURRENT_MONTH_DATA+THREE_MONTH_DATA, STATIONS_DATA, '2026_09-2026-06', True)
-    # build_initial_dataset(THREE_MONTH_DATA, STATIONS_DATA, '2026_08-2026-06', True)
-
     build_initial_dataset(DATA_METADATA, True)
 
     
