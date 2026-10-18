@@ -2,12 +2,17 @@
 import pandas as pd
 
 from mibici.config import (
-    CURRENT_MONTH_DATA,
+    DATA_METADATA,
     DEPRECATED_STATION_IDS_REPLACEMENTS,
     INTERIM_DATA_DIR,
     RAW_DATA_DIR,
-    STATIONS_DATA,
-    THREE_MONTH_DATA,
+)
+from mibici.features import (
+    create_minutes_column,
+    delete_duplicates_and_nulls,
+    delete_duplicates_and_reset_idx,
+    delete_user_data_columns,
+    transform_datetime_columns,
 )
 
 RENAMED_STATION_COLS = {
@@ -18,21 +23,24 @@ RENAMED_STATION_COLS = {
     "dcapacity": "No_bicis",
 }
 
-
 def build_initial_dataset(
-    csv_names: list[str],
-    stations_csv_name: str,
-    output_dataset_suffix: str | None = None,
+    data_metadata: dict,
     save_interim: bool = False,
 ) -> pd.DataFrame:
-    """Clean and join trips with station metadata; optionally save as CSV."""
+    """Limpia y une los viajes con los metadatos de las estaciones; opcionalmente guarda el resultado en CSV."""
+    csv_names = data_metadata['monthly']
+    stations_csv_name = data_metadata['stations']
+    output_dataset_suffix = f"{data_metadata["data_range"]["from"]}-{data_metadata["data_range"]["to"]}"
+
     trips = load_monthly_trips(csv_names)
     stations = get_clean_stations_df(stations_csv_name)
     result = join_station_metadata(trips, stations)
 
     if save_interim:
-        result.to_csv(
-            INTERIM_DATA_DIR / f"joined_trips_stations-{output_dataset_suffix}.csv",
+        result.to_parquet(
+            INTERIM_DATA_DIR / f"joined_trips_stations-{output_dataset_suffix}.parquet",
+            engine="pyarrow",
+            compression="snappy",
             index=False,
         )
 
@@ -40,17 +48,17 @@ def build_initial_dataset(
 
 
 def load_monthly_trips(csv_names: list[str]) -> pd.DataFrame:
-    """Read monthly CSV filenames, clean them, and remove duplicates."""
+    """Lee los archivos CSV mensuales, limpia los datos y elimina los duplicados."""
     frames = []
     for name in csv_names:
         frame = pd.read_csv(RAW_DATA_DIR / name)
         frames.append(clean_trips(frame))
 
-    return _deduplicate_trips(pd.concat(frames, ignore_index=True))
+    return delete_duplicates_and_reset_idx(pd.concat(frames, ignore_index=True))
 
 
 def clean_trips(frame: pd.DataFrame) -> pd.DataFrame:
-    """Remove user fields and incomplete trips; parse dates and derive minutes."""
+    """Elimina los datos de los usuarios y los viajes incompletos; convierte las fechas y calcula la duración en minutos."""
     required_columns = [
         "Inicio_del_viaje",
         "Fin_del_viaje",
@@ -58,33 +66,19 @@ def clean_trips(frame: pd.DataFrame) -> pd.DataFrame:
         "Destino_Id",
     ]
 
-    result = frame.drop(
-        columns=["Usuario_Id", "Genero", "Año_de_nacimiento"],
-        errors="ignore",
-    )
-    result = result.drop_duplicates()
-    result = result.dropna(subset=required_columns).copy()
+    result = delete_user_data_columns(frame, ["Usuario_Id", "Genero", "Año_de_nacimiento"])
 
-    for column in ("Inicio_del_viaje", "Fin_del_viaje"):
-        result[column] = pd.to_datetime(result[column], errors="raise")
+    result = delete_duplicates_and_nulls(result, required_columns)
 
-    result["Duracion_minutos"] = (
-        result["Fin_del_viaje"] - result["Inicio_del_viaje"]
-    ).dt.total_seconds() / 60
+    result = transform_datetime_columns(result, ["Inicio_del_viaje", "Fin_del_viaje"])
 
-    if result["Duracion_minutos"].lt(0).any():
-        raise ValueError("Some trips end before they start.")
-
-    return result
+    return create_minutes_column(result)
 
 
-def _deduplicate_trips(frame: pd.DataFrame) -> pd.DataFrame:
-    """Remove identical rows, including duplicates across monthly files."""
-    return frame.drop_duplicates().reset_index(drop=True)
 
 
 def get_clean_stations_df(station_df_name: str) -> pd.DataFrame:
-    """Read and rename station metadata; exclude explicitly replaced IDs."""
+    """Lee los metadatos de las estaciones, renombra sus columnas y excluye los identificadores reemplazados explícitamente."""
     stations = pd.read_csv(RAW_DATA_DIR / station_df_name)
     stations = stations.rename(columns=RENAMED_STATION_COLS)
 
@@ -98,7 +92,7 @@ def join_station_metadata(
     trips: pd.DataFrame,
     stations: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Replace station aliases and attach prefixed origin/destination metadata."""
+    """Reemplaza los identificadores alternativos de las estaciones y añade sus metadatos con prefijos de origen y destino."""    
     result = trips.copy()
     station_columns = ["Origen_Id", "Destino_Id"]
 
@@ -133,8 +127,10 @@ def join_station_metadata(
 
 
 if __name__ == "__main__":
-    build_initial_dataset(CURRENT_MONTH_DATA, STATIONS_DATA, '2026_09', True)
-    build_initial_dataset(CURRENT_MONTH_DATA+THREE_MONTH_DATA, STATIONS_DATA, '2026_09-2026-06', True)
-    build_initial_dataset(THREE_MONTH_DATA, STATIONS_DATA, '2026_08-2026-06', True)
+    # build_initial_dataset(CURRENT_MONTH_DATA, STATIONS_DATA, '2026_09', True)
+    # build_initial_dataset(CURRENT_MONTH_DATA+THREE_MONTH_DATA, STATIONS_DATA, '2026_09-2026-06', True)
+    # build_initial_dataset(THREE_MONTH_DATA, STATIONS_DATA, '2026_08-2026-06', True)
+
+    build_initial_dataset(DATA_METADATA, True)
 
     

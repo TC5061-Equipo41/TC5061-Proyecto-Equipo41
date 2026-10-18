@@ -2,17 +2,12 @@
 
 import pandas as pd
 
-from mibici.config import CURRENT_MONTH_DATA, STATIONS_DATA, THREE_MONTH_DATA
-from mibici.dataset import build_initial_dataset
 
-
-def create_p1_dataset(consider_month: bool, original_data: pd.DataFrame | None = None) -> pd.DataFrame :
-    if original_data is None:
-        original_data = build_initial_dataset(CURRENT_MONTH_DATA+THREE_MONTH_DATA, STATIONS_DATA)
+def create_p1_dataset(data: pd.DataFrame) -> pd.DataFrame :
     for col in ['Inicio_del_viaje','Fin_del_viaje']:
-        original_data[col] = pd.to_datetime(original_data[col])
+        data[col] = pd.to_datetime(data[col])
 
-    p1_df = original_data[["Origen_Id", "Inicio_del_viaje"]].copy()
+    p1_df = data[["Origen_Id", "Inicio_del_viaje"]].copy()
     p1_df["Inicio_del_viaje"] = pd.to_datetime(p1_df["Inicio_del_viaje"])
     p1_df["Fecha"] = p1_df["Inicio_del_viaje"].dt.floor("h")
 
@@ -34,19 +29,16 @@ def create_p1_dataset(consider_month: bool, original_data: pd.DataFrame | None =
 
     p1_df["Hora"] = p1_df["Fecha"].dt.hour
     p1_df["Dia"] = p1_df["Fecha"].dt.day
-    if (consider_month):
-        p1_df["Mes"] = p1_df["Fecha"].dt.month
+    p1_df["Mes"] = p1_df["Fecha"].dt.month
 
     return p1_df
 
 
-def get_train_test_split(df: pd.DataFrame, consider_month: bool):
+def get_train_test_split(df: pd.DataFrame):
     train_end = pd.Timestamp("2026-08-31")
     test_end = pd.Timestamp("2026-09-30")
 
-    FEATURES = ["Origen_Id", "Hora", "Dia"]
-    if (consider_month):
-        FEATURES.append('Mes')
+    FEATURES = ["Origen_Id", "Hora", "Dia", "Mes"]
 
     TARGET = "Viajes"
 
