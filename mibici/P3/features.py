@@ -13,7 +13,7 @@ app = typer.Typer()
 @app.command()
 def main(
     input_path: Path = INTERIM_DATA_DIR
-    / "joined_trips_stations-2026_09-2026-06.csv",
+    / "joined_trips_stations-2026_09-2025_10.csv",
     output_path: Path = PROCESSED_DATA_DIR / "p3_station_features.csv",
 ):
     """Generate station-level usage features for P3 clustering."""
