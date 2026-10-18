@@ -67,6 +67,25 @@ A short description of the project..
 
 ---
 
+### Como ejecutar el experimento
+
+1. Correr el servidor de MLFlow local, ajusta to host y puerto de ser necesario
+
+```
+mlflow server --backend-store-uri sqlite:///mlflow.db  --host 127.0.0.1 --port 5000
+```
+
+2. Agregar las siguientes variables de ambiente a .env. Ajusta de ser necesario
+
+```
+MLFLOW_URI="http://127.0.0.1:5000"
+```
+
+3. Corre `mibici/modeling/train.py`, asegurate de antes haber completado el `paso 1` y `paso 2` de la sección `Como cargar el dataset inicial para uso en notebooks` de este README.md
+4. Revisa resultados en http://127.0.0.1:5000
+
+---
+
 ### Como cargar el dataset inicial para uso en notebooks
 
 1. Descarga los datos de nomenclatura y viajes mensuales https://mibici.net/es/datos-abiertos/
@@ -82,6 +101,11 @@ DATA_METADATA = {
 ```
 
 3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
+
+---
+
+---
+
 ## P3. Agrupamiento de estaciones por patrones de uso
 
 ### Pregunta de negocio
@@ -106,7 +130,7 @@ Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el
 
 ### Modelo y evaluación
 
-Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (*silhouette score*), con el objetivo de comparar la separación y cohesión de los grupos.
+Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_silhouette score_), con el objetivo de comparar la separación y cohesión de los grupos.
 
 El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
 
@@ -157,24 +181,3 @@ La duración promedio de los viajes es similar en ambos grupos: 10.94 minutos en
 Para apoyar la interpretación espacial, se utiliza el mapa de estaciones agrupadas. La ubicación geográfica debe analizarse junto con los patrones de uso, sin asumir que cada clúster corresponde a una zona geográfica claramente delimitada.
 
 Estos resultados pueden servir como punto de partida para estudiar la distribución de la demanda y detectar estaciones que podrían requerir análisis adicional para la planeación del sistema.
-
----
-
-### Como ejecutar el experimento
-
-1. Correr el servidor de MLFlow local, ajusta to host y puerto de ser necesario
-
-```
-mlflow server --backend-store-uri sqlite:///mlflow.db  --host 127.0.0.1 --port 5000
-```
-
-2. Agregar las siguientes variables de ambiente a .env. Ajusta de ser necesario
-
-```
-MLFLOW_URI="http://127.0.0.1:5000"
-```
-
-3. Corre `mibici/modeling/train.py`, asegurate de antes haber completado el `paso 1` y `paso 2` de la sección `Como cargar el dataset inicial para uso en notebooks` de este README.md
-4. Revisa resultados en http://127.0.0.1:5000
-
----

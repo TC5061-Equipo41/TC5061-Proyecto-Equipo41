@@ -10,8 +10,8 @@ from mibici.dataset import (
     clean_trips,
     get_clean_stations_df,
     join_station_metadata,
-    _deduplicate_trips,
 )
+from mibici.features import delete_duplicates_and_reset_idx
 
 MONTHLY_FILES = [
     "datos_abiertos_2025_10.csv",
@@ -42,7 +42,7 @@ def main():
         frame = pd.read_csv(path, encoding=encoding)
         frames.append(clean_trips(frame))
 
-    trips = _deduplicate_trips(pd.concat(frames, ignore_index=True))
+    trips = delete_duplicates_and_reset_idx(pd.concat(frames, ignore_index=True))
     stations = get_clean_stations_df(STATIONS_DATA)
     result = join_station_metadata(trips, stations)
 
