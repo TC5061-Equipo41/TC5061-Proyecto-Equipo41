@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
+from sklearn.preprocessing import OneHotEncoder
 
 from mibici.modeling.p1.evaluate import log_metrics
 from mibici.p1.dataset import create_p1_dataset, get_train_test_split
@@ -19,7 +19,7 @@ def train_p1_model(original_data: pd.Dataframe, data_version: str, date_range: d
 
     params = {'alpha': 0.1, 'fit_intercept': True, 'solver':"lsqr", 'tol':1e-4, 'max_iter':10_000}
     model = make_pipeline(
-        StandardScaler(),
+        OneHotEncoder(),
         Ridge(**params),
     )
 

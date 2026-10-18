@@ -199,6 +199,10 @@ mlflow.db
 /data/interim/
 /data/processed/
 
+<<<<<<< HEAD
+mlruns/
+mlartifacts/
+=======
 
 # Modelos serializados generados localmente
 /models/
@@ -208,3 +212,4 @@ mlflow.db
 # MLflow y resultados locales
 mlruns/
 mlartifacts/
+>>>>>>> origin/main

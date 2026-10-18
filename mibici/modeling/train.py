@@ -28,14 +28,15 @@ def create_experiment():
     mlflow.set_experiment(EXPERIMENT_NAME)
 
 
+
 def execute_runs():
     create_experiment()
-
-    # P1
     base_dataset = build_initial_dataset(DATA_METADATA)
     data_version = "1.0.0"
     date_range = DATA_METADATA["data_range"]
     mlflow.set_experiment(EXPERIMENT_NAME)
+    
+    # P1
     train_p1_model(
         base_dataset,
         data_version,
@@ -43,7 +44,6 @@ def execute_runs():
     )
 
     # P2: clasificación de riesgo
-    mlflow.set_experiment(EXPERIMENT_NAME)
     train_p2_model(base_dataset, data_version, date_range)
 
     # P3
