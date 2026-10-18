@@ -199,5 +199,17 @@ mlflow.db
 /data/interim/
 /data/processed/
 
+<<<<<<< HEAD
 mlruns/
 mlartifacts/
+=======
+
+# Modelos serializados generados localmente
+/models/
+*.pkl
+*.joblib
+
+# MLflow y resultados locales
+mlruns/
+mlartifacts/
+>>>>>>> origin/main
