@@ -1,5 +1,6 @@
-# Data
-/data/
+# Data: nada de MiBici se versiona, salvo el manifiesto de versión de datos
+/data/*
+!/data/manifest.json
 
 # Mac OS-specific storage files
 .DS_Store
@@ -199,11 +200,6 @@ mlflow.db
 /data/interim/
 /data/processed/
 
-<<<<<<< HEAD
-mlruns/
-mlartifacts/
-=======
-
 # Modelos serializados generados localmente
 /models/
 *.pkl
@@ -212,4 +208,3 @@ mlartifacts/
 # MLflow y resultados locales
 mlruns/
 mlartifacts/
->>>>>>> origin/main
