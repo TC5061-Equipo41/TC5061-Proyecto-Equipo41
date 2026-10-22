@@ -8,6 +8,7 @@ from mibici.config import (
 )
 from mibici.dataset import (
     clean_trips,
+    delete_duplicates_and_reset_idx,
     get_clean_stations_df,
     join_station_metadata,
 )
