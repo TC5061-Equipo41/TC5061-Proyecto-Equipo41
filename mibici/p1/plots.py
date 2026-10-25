@@ -13,7 +13,7 @@ def plot_prediction_vs_real_data(y_real, y_pred):
     ax.scatter(x, y_pred, color="orange", label="Viajes predichos", s=15, alpha=0.6)
     ax.set_xlabel("Observación del conjunto de prueba")
     ax.set_ylabel("Viajes")
-    ax.set_title("Ridge: valores reales y predichos")
+    ax.set_title("Valores reales y predichos")
     ax.legend()
     ax.grid(alpha=0.2)
     fig.tight_layout()
