@@ -1,0 +1,139 @@
+{
+  "pipeline_version": "1.0",
+  "data_range": {
+    "from": "2025_10",
+    "to": "2026_09"
+  },
+  "generated_at_utc": "2026-10-22T04:25:23+00:00",
+  "summary": {
+    "months": 12,
+    "trips_raw": 4497877,
+    "date_min": "2025-10-01 00:00:26",
+    "date_max": "2026-09-30 23:59:48",
+    "stations_catalog": 484,
+    "trips_clean": 4497119
+  },
+  "raw_files": [
+    {
+      "file": "datos_abiertos_2025_10.csv",
+      "bytes": 36442309,
+      "encoding": "utf-8",
+      "rows": 420064,
+      "sha256": "505d9b8b59f65fa223f7889189b74b9fe167c9dda11c7e7053536a360c611370",
+      "date_min": "2025-10-01 00:00:26",
+      "date_max": "2025-10-31 23:59:57"
+    },
+    {
+      "file": "datos_abiertos_2025_11.csv",
+      "bytes": 32997087,
+      "encoding": "utf-8",
+      "rows": 380328,
+      "sha256": "f5c4f1b0c0842339dfdfaac756607314bdf5b64d17cde58d754f5a5a2e1a5fbe",
+      "date_min": "2025-11-01 00:00:07",
+      "date_max": "2025-11-30 23:59:53"
+    },
+    {
+      "file": "datos_abiertos_2025_12.csv",
+      "bytes": 29089463,
+      "encoding": "utf-8",
+      "rows": 335420,
+      "sha256": "b9fbb7386666ac3d452e3d3ef40ab443c39eef349cd9c97207230371e1d2d001",
+      "date_min": "2025-12-01 00:01:03",
+      "date_max": "2025-12-31 23:59:08"
+    },
+    {
+      "file": "datos_abiertos_2026_01.csv",
+      "bytes": 30985189,
+      "encoding": "cp1252",
+      "rows": 357180,
+      "sha256": "c40d7a43eb1c0b1523d6267bcdfac1daad04179ef1f0a7cf93f09b2df82285c2",
+      "date_min": "2026-01-01 00:03:07",
+      "date_max": "2026-01-31 23:58:47"
+    },
+    {
+      "file": "datos_abiertos_2026_02.csv",
+      "bytes": 28953901,
+      "encoding": "utf-8",
+      "rows": 333756,
+      "sha256": "2d78fa9686477bdedbf333423e6aadc63b265aaef038eb0b09701746a155ae1f",
+      "date_min": "2026-02-01 00:00:01",
+      "date_max": "2026-02-28 23:57:41"
+    },
+    {
+      "file": "datos_abiertos_2026_03.csv",
+      "bytes": 32640591,
+      "encoding": "utf-8",
+      "rows": 376243,
+      "sha256": "97c273aa7465c99d509dfc58436122a979ad51af00bd527cef6144210375d16e",
+      "date_min": "2026-03-01 00:00:09",
+      "date_max": "2026-03-31 23:59:02"
+    },
+    {
+      "file": "datos_abiertos_2026_04.csv",
+      "bytes": 30523683,
+      "encoding": "utf-8",
+      "rows": 351851,
+      "sha256": "9165342d0169f2c0ba4fb2c944003147c8a95d77f9058361b451cadf141b2483",
+      "date_min": "2026-04-01 00:00:26",
+      "date_max": "2026-04-30 23:59:03"
+    },
+    {
+      "file": "datos_abiertos_2026_05.csv",
+      "bytes": 27427394,
+      "encoding": "utf-8",
+      "rows": 315895,
+      "sha256": "d0ac16ae3a75b8ac40565176e2e607c99c756a385860caa7e2ffb351082c9d45",
+      "date_min": "2026-05-01 00:01:04",
+      "date_max": "2026-05-31 23:59:19"
+    },
+    {
+      "file": "datos_abiertos_2026_06.csv",
+      "bytes": 30826027,
+      "encoding": "utf-8",
+      "rows": 355303,
+      "sha256": "a4d195786a3599b155829288a0432cd9e76c6780dc693c0e9579d11e11c49a27",
+      "date_min": "2026-06-01 00:06:46",
+      "date_max": "2026-06-30 23:59:58"
+    },
+    {
+      "file": "datos_abiertos_2026_07.csv",
+      "bytes": 33696291,
+      "encoding": "utf-8",
+      "rows": 388257,
+      "sha256": "3f9db9fed985977b175001a984302eae7c61326a75ed93afae9c8fc17bbdb922",
+      "date_min": "2026-07-01 00:00:20",
+      "date_max": "2026-07-31 23:59:56"
+    },
+    {
+      "file": "datos_abiertos_2026_08.csv",
+      "bytes": 34158210,
+      "encoding": "utf-8",
+      "rows": 393524,
+      "sha256": "e34f39b9ad204ae0b66f3538894a5f86ed03f46d98701169d3e4d95952d5f671",
+      "date_min": "2026-08-01 00:00:33",
+      "date_max": "2026-08-31 23:59:36"
+    },
+    {
+      "file": "datos_abiertos_2026_09.csv",
+      "bytes": 42566896,
+      "encoding": "utf-8",
+      "rows": 490056,
+      "sha256": "00b5cf64cc31a502d01044d905f6e033f9bc1db962e771119742fd25c6cb58b3",
+      "date_min": "2026-09-01 00:00:59",
+      "date_max": "2026-09-30 23:59:48"
+    }
+  ],
+  "stations_file": {
+    "file": "nomenclatura_2026_09.csv",
+    "bytes": 40841,
+    "encoding": "utf-8",
+    "rows": 484,
+    "sha256": "206e45fe633922b634d858142fa21e6fd9f4c421b6435c02980ef290cc2df90d"
+  },
+  "interim_file": {
+    "path": "data/interim/joined_trips_stations-2025_10-2026_09.parquet",
+    "rows": 4497119,
+    "sha256": "8911c495692c224d2d37b4675df51bbe16a02164818b26eb5c0611916c4fb055"
+  },
+  "data_version": "v1.0-cec7eeaf7d56"
+}

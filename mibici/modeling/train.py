@@ -152,28 +152,19 @@ P3_COLUMNS = [
 ]
 
 
-
 def ensure_p3_features(base_dataset: pd.DataFrame, data_version: str) -> None:
-    """Reutiliza las características existentes de P3 y evita sobrescribirlas."""
-    if P3_FEATURES.exists():
-        logger.info(
-            f"Se reutilizan las características existentes de P3: {P3_FEATURES}"
-        )
+    """Genera ``p3_station_features.csv`` con ``mibici/P3/features.py`` si falta o si los datos
+    cambiaron (la versión se anota en un archivo junto al CSV)."""
+    stamp = P3_FEATURES.with_suffix(".data_version")
+    if P3_FEATURES.exists() and stamp.exists() and stamp.read_text().strip() == data_version:
         return
-
-    if not all(column in base_dataset.columns for column in P3_COLUMNS):
-        raise FileNotFoundError(
-            f"No existe {P3_FEATURES} y el dataset disponible no contiene "
-            "las columnas necesarias para generarlo."
-        )
 
     from mibici.P3.features import main as build_p3_features
 
     INTERIM_DATA_DIR.mkdir(parents=True, exist_ok=True)
     base_dataset[P3_COLUMNS].to_csv(P3_INTERIM_CSV, index=False)
     build_p3_features(input_path=P3_INTERIM_CSV, output_path=P3_FEATURES)
-
-
+    stamp.write_text(data_version)
 
 
 def run_p3(base_dataset, data_version, date_range, model, params, overrides):
@@ -197,7 +188,6 @@ def run_p3(base_dataset, data_version, date_range, model, params, overrides):
         ),
         **training_params,
     )
-
 
 
 RUNNERS = {"p1": run_p1, "p2": run_p2, "p3": run_p3}
@@ -282,31 +272,10 @@ def dispatch(
     create_experiment()
     experiment = mlflow.get_experiment_by_name(EXPERIMENT_NAME)
 
-
-    questions = list(QUESTIONS) if question == "all" else [question]
+    base_dataset, manifest = load_base_dataset(DATA_METADATA)
+    data_version = manifest["data_version"]
     date_range = DATA_METADATA["data_range"]
-
-    if questions == ["p3"]:
-        if not P3_FEATURES.exists():
-            raise FileNotFoundError(
-                f"No se encontraron las características existentes de P3: {P3_FEATURES}"
-            )
-
-        from mibici.dataset import build_manifest, write_manifest
-
-        manifest = build_manifest(DATA_METADATA)
-        write_manifest(manifest)
-        data_version = manifest["data_version"]
-        base_dataset = pd.read_csv(P3_FEATURES)
-
-        logger.info(
-            "P3 utilizará las características existentes; "
-            "no se reconstruirá el dataset anual."
-        )
-    else:
-        base_dataset, manifest = load_base_dataset(DATA_METADATA)
-        data_version = manifest["data_version"]
-
+    questions = list(QUESTIONS) if question == "all" else [question]
 
     # Corrida del despachador: retoma la que creó `mlflow run` (MLFLOW_RUN_ID) o crea una.
     with mlflow.start_run(run_name=f"dispatch-{question}-{data_version}") as parent:
@@ -380,6 +349,7 @@ def main(
 ):
     """Entrena una pregunta (o todas) y registra las corridas en MLflow."""
     dispatch(question, model, params, stage_of_work)
+
 
 
 if __name__ == "__main__":
