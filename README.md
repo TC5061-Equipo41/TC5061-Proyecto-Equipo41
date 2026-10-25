@@ -1,12 +1,16 @@
-# mibici
+# MiBici
 
 <a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
     <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
 </a>
 
-A short description of the project..
+Dar respuesta a preguntas de negocio con técnicas de Machine Learning y DevOps sobre la operación de MiBici, el sistema de bicicleta pública del Área Metropolitana de Guadalajara. Para esto, se considera data histórica y de clustering para responder lo siguiente:
 
-## Project Organization
+- P1: ¿Cuántos viajes se iniciarán en una estación o zona en un periodo futuro?.
+- P2: ¿Una estación estará en riesgo de quedarse sin bicicletas o sin anclajes disponibles en un periodo futuro?
+- P3:	¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
+
+## Organización del Proyecto
 
 ```
 ├── LICENSE            <- Open-source license if one is chosen
@@ -59,30 +63,98 @@ A short description of the project..
 
 ---
 
-### Setup inicial
+### Setup inicial (Python 3.14)
 
-1. Crear .venv `python -m venv .venv`
-2. Activar .venv `source .venv/bin/activate`
-3. Instalar dependencias `pip install -r requirements.txt`
+El proyecto requiere **Python 3.14** (`pyproject.toml`). `requirements.txt` y `python_env.yaml`
+fijan exactamente las mismas versiones.
+
+```bash
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+python -m pip install -r requirements.txt
+```
 
 ---
 
-### Como ejecutar el experimento
+### Servidor de tracking y variable `MLFLOW_TRACKING_URI`
 
-1. Correr el servidor de MLFlow local, ajusta to host y puerto de ser necesario
+El Model Registry requiere un backend con base de datos. En una terminal aparte (deja el
+servidor corriendo):
 
-```
-mlflow server --backend-store-uri sqlite:///mlflow.db  --host 127.0.0.1 --port 5000
-```
-
-2. Agregar las siguientes variables de ambiente a .env. Ajusta de ser necesario
-
-```
-MLFLOW_URI="http://127.0.0.1:5000"
+```bash
+mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000
 ```
 
-3. Corre `mibici/modeling/train.py`, asegurate de antes haber completado el `paso 1` y `paso 2` de la sección `Como cargar el dataset inicial para uso en notebooks` de este README.md
-4. Revisa resultados en http://127.0.0.1:5000
+En la terminal de trabajo apunta MLflow al servidor:
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000          # macOS / Linux
+$env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"        # Windows PowerShell
+```
+
+También puede ir en `.env` (`MLFLOW_TRACKING_URI="http://127.0.0.1:5000"`); `config.py` acepta
+el nombre anterior `MLFLOW_URI` por compatibilidad. `mlflow.db` y `mlartifacts/` están en
+`.gitignore`.
+
+---
+
+### Reproducir desde un clon limpio con `mlflow run`
+
+1. Descarga los 12 CSV mensuales (`datos_abiertos_2025_10.csv` … `datos_abiertos_2026_09.csv`) y
+   `nomenclatura_2026_09.csv` de https://mibici.net/es/datos-abiertos/ en `data/raw/`
+   (los nombres están en `mibici/config.py`).
+2. Con el servidor levantado y `MLFLOW_TRACKING_URI` exportada:
+
+```bash
+# Ingesta: limpia y une los datos, guarda el Parquet y escribe data/manifest.json
+mlflow run . -e ingest --env-manager uv --experiment-name mibici-equipo41
+
+# Entrenamiento por pregunta (o question=all para las tres)
+mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 -P question=p1
+mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 -P question=p2
+mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 -P question=p3
+
+# Con hiperparámetros (los defaults están en config.TRAIN_DEFAULTS)
+mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 \
+    -P question=p3 -P params="min_k=3,max_k=6"
+```
+
+- `--env-manager uv` crea el entorno de `python_env.yaml` (instala Python 3.14 si hace falta;
+  requiere [uv](https://docs.astral.sh/uv/)). Si ya activaste `.venv` con `requirements.txt`,
+  usa `--env-manager local` para reutilizarlo.
+- Siempre pasa `--experiment-name mibici-equipo41`: el despachador rechaza corridas en otro
+  experimento.
+- Sin MLflow Project también funciona: `python -m mibici.dataset` y
+  `python -m mibici.modeling.train --question p1`.
+
+| Punto de entrada | Parámetros (`-P`) | Qué hace |
+|---|---|---|
+| `ingest` | — | `mibici/dataset.py`: Parquet en `data/interim/` y `data/manifest.json` |
+| `train` | `question` (p1, p2, p3, all), `model`, `params` (`"clave=valor,…"`), `stage_of_work` | `mibici/modeling/train.py` llama a `train_pX_model(...)` |
+
+### Versión de datos: `data/manifest.json`
+
+La ingesta escribe, por archivo crudo, nombre, tamaño, codificación, número de filas, rango de
+fechas (`date_min`, `date_max`) y SHA-256, además del hash del Parquet intermedio. `data_version`
+(p. ej. `v1.0-b21c9761944d`) es un hash de los archivos crudos, del rango de fechas y de
+`DATA_PIPELINE_VERSION`: si cambian los datos, cambia la versión. El manifiesto es el único
+archivo de `data/` que se versiona en Git y se registra como artefacto en cada corrida.
+
+### Trazabilidad común en MLflow (`mibici/modeling/tracking.py`)
+
+| Función | Qué registra |
+|---|---|
+| `set_common_tags(question, model_family, stage_of_work)` | Etiquetas `team`, `git_commit`, `git_dirty`, `question`, `model_family`, `stage_of_work` |
+| `log_data_version(dataset=...)` | `data/manifest.json`, etiqueta `data_version` y el dataset con `mlflow.log_input` |
+| `log_run_config(dict)` | `config/run_config.json` y copia de `MLproject`, `python_env.yaml`, `requirements.txt` y `config.py` |
+
+El despachador (`mibici/modeling/train.py`) crea una corrida `dispatch-…`, llama a
+`train_pX_model(original_data, data_version, date_range, model=None, params=None)` y aplica estas
+tres funciones a las corridas que la pregunta haya creado (quedan como corridas hijas). Cada
+integrante puede llamarlas también dentro de sus propias corridas, por ejemplo para fijar
+`stage_of_work="baseline"`.
+
+Revisa los resultados en http://127.0.0.1:5000 (experimento `mibici-equipo41`).
 
 ---
 
