@@ -2,7 +2,8 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from loguru import logger
-
+import os
+from pathlib import Path
 # Load environment variables from .env file if it exists
 load_dotenv()
 
@@ -43,6 +44,53 @@ DATA_METADATA = {
     'stations': STATIONS_DATA,
     'data_range': {'from': '2025_10', 'to': '2026_09'}
 }
+
+# Infraestructura de MLflow
+TEAM_NAME = "equipo41"
+EXPERIMENT_NAME = f"mibici-{TEAM_NAME}"
+SEED = 42
+
+MLFLOW_TRACKING_URI = (
+    os.getenv("MLFLOW_TRACKING_URI")
+    or os.getenv("MLFLOW_URI")
+    or "http://127.0.0.1:5000"
+)
+os.environ.setdefault("MLFLOW_URI", MLFLOW_TRACKING_URI)
+
+# Manifiesto y versionado de datos
+MANIFEST_PATH = DATA_DIR / "manifest.json"
+DATA_PIPELINE_VERSION = "1.0"
+
+# Parámetros predeterminados de entrenamiento
+TRAIN_DEFAULTS = {
+    "p1": {
+        "model": "ridge",
+        "params": {
+            "alpha": 0.1,
+            "fit_intercept": True,
+            "solver": "lsqr",
+            "tol": 1e-4,
+            "max_iter": 10_000,
+        },
+    },
+    "p2": {
+        "model": "logistic_regression",
+        "params": {
+            "class_weight": "balanced",
+            "max_iter": 1000,
+            "random_state": SEED,
+        },
+    },
+    "p3": {
+        "model": "kmeans",
+        "params": {
+            "min_k": 2,
+            "max_k": 8,
+            "random_state": SEED,
+        },
+    },
+}
+
 # If tqdm is installed, configure loguru with tqdm.write
 # https://github.com/Delgan/loguru/issues/135
 try:
