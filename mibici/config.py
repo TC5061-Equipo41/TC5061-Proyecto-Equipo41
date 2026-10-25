@@ -69,16 +69,7 @@ DATA_PIPELINE_VERSION = "1.0"  # súbelo si cambia la limpieza en dataset.py
 # Valores por defecto del punto de entrada `train` del MLproject. En el MLproject todo vale
 # "default" y se resuelve aquí, para no repetir valores. Cada train_pX_model puede leerlos.
 TRAIN_DEFAULTS = {
-    "p1": {
-        "model": "ridge",
-        "params": {
-            "alpha": 0.1,
-            "fit_intercept": True,
-            "solver": "lsqr",
-            "tol": 1e-4,
-            "max_iter": 10_000,
-        },
-    },
+    "p1": {"model": "all", "params": {}},
     "p2": {
         "model": "logistic_regression",
         "params": {"class_weight": "balanced", "max_iter": 1000, "random_state": SEED},
