@@ -80,7 +80,7 @@ TRAIN_DEFAULTS = {
         },
     },
     "p2": {
-        "model": "logistic_regression",
+        "model": "logistic",
         "params": {"class_weight": "balanced", "max_iter": 1000, "random_state": SEED},
     },
     "p3": {
