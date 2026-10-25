@@ -1,0 +1,23 @@
+name: mibici-equipo41
+
+python_env: python_env.yaml
+
+entry_points:
+
+  ingest:
+    command: "python -m mibici.dataset"
+
+  train:
+    parameters:
+      question:
+        type: string
+        default: p2
+
+      model:
+        type: string
+        default: all
+
+    command: >
+      python -m mibici.modeling.train
+      --question {question}
+      --model {model}

@@ -1,183 +1,234 @@
 # mibici
 
-<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
-    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+Proyecto de MLOps para el análisis de datos abiertos del sistema MiBici.
 
-A short description of the project..
+El proyecto contiene tres preguntas de negocio:
+
+- **P1:** estimación de demanda.
+- **P2:** clasificación de riesgo futuro en estaciones.
+- **P3:** agrupamiento de estaciones por patrones de uso.
+
+La infraestructura utiliza **MLflow Projects** para ejecutar la ingesta y los entrenamientos de forma reproducible, además de MLflow Tracking y Model Registry para registrar experimentos, artefactos y modelos.
+
+---
 
 ## Project Organization
 
-```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
+```text
+├── LICENSE
+├── Makefile
+├── README.md
+├── MLproject               <- Entry points reproducibles de MLflow
+├── python_env.yaml         <- Entorno Python utilizado por MLflow Project
+├── requirements.txt        <- Dependencias con versiones fijas
+│
 ├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
+│   ├── external
+│   ├── interim
+│   ├── processed
+│   └── raw
 │
-├── docs               <- A default mkdocs project; see www.mkdocs.org for details
+├── docs
 │
-├── models             <- Trained and serialized models, model predictions, or model summaries
+├── models
 │
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
+├── notebooks
 │
-├── pyproject.toml     <- Project configuration file with package metadata for
-│                         mibici and configuration for tools like black
+├── pyproject.toml
 │
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
+├── references
 │
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
+├── reports
+│   └── figures
 │
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── mibici   <- Source code for use in this project.
-    │
-    ├── __init__.py             <- Makes mibici a Python module
-    │
-    ├── config.py               <- Store useful variables and configuration
-    │
-    ├── dataset.py              <- Scripts to download or generate data
-    │
-    ├── features.py             <- Code to create features for modeling
+└── mibici
+    ├── __init__.py
+    ├── config.py
+    ├── dataset.py
+    ├── features.py
+    ├── plots.py
     │
     ├── modeling
     │   ├── __init__.py
-    │   ├── predict.py          <- Code to run model inference with trained models
-    │   └── train.py            <- Code to train models
+    │   ├── train.py
+    │   ├── p1
+    │   ├── p2
+    │   └── p3
     │
-    └── plots.py                <- Code to create visualizations
+    ├── p1
+    ├── p2
+    └── P3
 ```
 
 ---
 
-### Setup inicial
+## Setup inicial
 
-1. Crear .venv `python -m venv .venv`
-2. Activar .venv `source .venv/bin/activate`
-3. Instalar dependencias `pip install -r requirements.txt`
+### 1. Crear el entorno virtual
 
----
+Desde la raíz del repositorio:
 
-### Como ejecutar el experimento
-
-1. Correr el servidor de MLFlow local, ajusta to host y puerto de ser necesario
-
-```
-mlflow server --backend-store-uri sqlite:///mlflow.db  --host 127.0.0.1 --port 5000
+```powershell
+python -m venv .venv
 ```
 
-2. Agregar las siguientes variables de ambiente a .env. Ajusta de ser necesario
+En Windows PowerShell:
 
-```
-MLFLOW_URI="http://127.0.0.1:5000"
-```
-
-3. Corre `mibici/modeling/train.py`, asegurate de antes haber completado el `paso 1` y `paso 2` de la sección `Como cargar el dataset inicial para uso en notebooks` de este README.md
-4. Revisa resultados en http://127.0.0.1:5000
-
----
-
-### Como cargar el dataset inicial para uso en notebooks
-
-1. Descarga los datos de nomenclatura y viajes mensuales https://mibici.net/es/datos-abiertos/
-2. Revisa las declaraciones de `config.py`, modifica a partir de los datos que necesites
-
+```powershell
+.\.venv\Scripts\Activate.ps1
 ```
 
-DATA_METADATA = {
-    'monthly': YEARLY_DATA,
-    'stations': STATIONS_DATA,
-    'data_range': {'from': '2025_09', 'to': '2026_09'}
-}
-```
-
-3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
-
----
-
----
-
-## P3. Agrupamiento de estaciones por patrones de uso
-
-### Pregunta de negocio
-
-¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
-
-### Objetivo
-
-Identificar grupos de estaciones de MiBici con características de uso similares mediante un modelo de clustering. Los resultados pueden servir como apoyo para analizar la distribución de la demanda y explorar oportunidades de expansión del sistema.
-
-### Datos y características
-
-El análisis utiliza datos de viajes de MiBici y la información de nomenclatura de estaciones. Se construye un conjunto de características agregadas por estación, que incluye:
-
-- Número de viajes de salida y llegada.
-- Viajes de salida por franja horaria.
-- Viajes de salida durante los fines de semana.
-- Duración promedio de los viajes.
-- Nombre y coordenadas geográficas de las estaciones.
-
-Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el algoritmo de clustering.
-
-### Modelo y evaluación
-
-Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_silhouette score_), con el objetivo de comparar la separación y cohesión de los grupos.
-
-El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
-
-### Ejecución de P3
-
-Desde la raíz del repositorio, ejecuta:
+En Linux/macOS:
 
 ```bash
-python -m mibici.modeling.p3.train
+source .venv/bin/activate
 ```
 
-Para generar las asignaciones de grupos:
+### 2. Instalar las dependencias
 
-```bash
-python -m mibici.modeling.p3.predict
+```powershell
+pip install -r requirements.txt
 ```
 
-Para generar el mapa de estaciones:
+El proyecto utiliza:
 
-```bash
-python -m mibici.modeling.p3.plot_clusters
+```text
+Python 3.14.7
 ```
 
-### Resultados generados
+El entorno reproducible también se encuentra declarado en:
 
-- `models/p3_kmeans.pkl`: modelo entrenado.
-- `data/processed/p3_station_features.csv`: características agregadas por estación.
-- `data/processed/p3_station_clusters.csv`: asignación de las estaciones a sus grupos.
-- `reports/figures/p3_clusters.png`: gráfica de evaluación del clustering.
-- `reports/figures/p3_station_map.png`: mapa geográfico de las estaciones agrupadas.
+```text
+python_env.yaml
+```
 
-### Interpretación
+---
 
-Los grupos permiten distinguir estaciones con diferentes niveles de actividad. La interpretación geográfica debe realizarse con el mapa y las características de cada grupo; no se debe asumir que los clústeres representan zonas geográficas claramente separadas sin evidencia adicional.
+## Preparación de los datos
 
-### Seguimiento de experimentos
+Los datos abiertos deben descargarse desde el portal oficial de MiBici:
 
-Los experimentos de P3 se registran en MLflow bajo el experimento `mibici-p3-clustering`. Se guardan parámetros, métricas, etiquetas y artefactos para documentar y comparar las ejecuciones.
+https://mibici.net/es/datos-abiertos/
 
-### Resultados e interpretación de los clústeres
+Los archivos de viajes mensuales y la nomenclatura de estaciones deben colocarse en:
 
-El modelo K-Means seleccionó dos clústeres como resultado de la evaluación mediante el coeficiente de silueta. El conjunto analizado contiene 471 estaciones: 278 pertenecen al clúster 0 y 193 al clúster 1.
+```text
+data/raw/
+```
 
-El clúster 0 presenta un promedio de 5,080.12 viajes de salida y 5,074.35 viajes de llegada por estación. En contraste, el clúster 1 registra 1,109.37 viajes de salida y 1,117.68 viajes de llegada por estación.
+La selección de archivos utilizada por el proyecto se encuentra centralizada en:
 
-La duración promedio de los viajes es similar en ambos grupos: 10.94 minutos en el clúster 0 y 11.04 minutos en el clúster 1. Estos resultados sugieren que la principal diferencia entre los grupos está relacionada con el volumen de uso de las estaciones.
+```text
+mibici/config.py
+```
 
-Para apoyar la interpretación espacial, se utiliza el mapa de estaciones agrupadas. La ubicación geográfica debe analizarse junto con los patrones de uso, sin asumir que cada clúster corresponde a una zona geográfica claramente delimitada.
+Actualmente el rango configurado es:
 
-Estos resultados pueden servir como punto de partida para estudiar la distribución de la demanda y detectar estaciones que podrían requerir análisis adicional para la planeación del sistema.
+```text
+2025_10 a 2026_09
+```
+
+---
+
+# Ejecución reproducible con MLflow Projects
+
+El archivo:
+
+```text
+MLproject
+```
+
+define dos entry points principales:
+
+```text
+ingest
+train
+```
+
+Esto permite ejecutar la preparación de datos y los entrenamientos desde MLflow sin invocar manualmente los scripts internos.
+
+---
+
+## 1. Iniciar el servidor local de MLflow
+
+Desde una terminal independiente:
+
+```powershell
+mlflow server --backend-store-uri sqlite:///mlflow.db --host 127.0.0.1 --port 5000
+```
+
+La interfaz de MLflow estará disponible en:
+
+```text
+http://127.0.0.1:5000
+```
+
+En otra terminal, con el entorno virtual activo:
+
+```powershell
+$env:MLFLOW_TRACKING_URI="http://127.0.0.1:5000"
+```
+
+---
+
+## 2. Ejecutar la ingesta
+
+Desde la raíz del repositorio:
+
+```powershell
+mlflow run . -e ingest --env-manager local
+```
+
+El entry point ejecuta:
+
+```text
+python -m mibici.dataset
+```
+
+La ingesta limpia y une los viajes con los metadatos de las estaciones.
+
+Como resultado se generan, entre otros archivos:
+
+```text
+data/interim/joined_trips_stations-2025_10-2026_09.parquet
+data/interim/data_manifest-2025_10-2026_09.json
+```
+
+El manifiesto registra información reproducible del dataset, incluyendo:
+
+- rango temporal;
+- archivos fuente;
+- tamaño de los archivos;
+- hashes SHA-256;
+- número de filas;
+- número y nombres de columnas;
+- hash del dataset procesado;
+- versión reproducible de los datos.
+
+La versión de datos utilizada en los experimentos se obtiene directamente de este manifiesto.
+
+---
+
+# Entrenamiento
+
+El entry point `train` recibe los parámetros:
+
+```text
+question
+model
+```
+
+La ejecución general tiene la siguiente forma:
+
+```powershell
+mlflow run . -e train -P question=<pregunta> -P model=<modelo> --env-manager local
+```
+
+---
+
+## P1
+
+Para ejecutar P1:
+
+```powershell
+mlflow run

@@ -190,26 +190,12 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# MLFlow
+# MLflow
 mlflow.db
-/mlartifacts
-
-# Datos locales de MiBici: no subir a Git
-/data/raw/
-/data/interim/
-/data/processed/
-
-<<<<<<< HEAD
 mlruns/
 mlartifacts/
-=======
 
 # Modelos serializados generados localmente
 /models/
 *.pkl
 *.joblib
-
-# MLflow y resultados locales
-mlruns/
-mlartifacts/
->>>>>>> origin/main
