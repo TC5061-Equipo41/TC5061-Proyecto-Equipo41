@@ -158,6 +158,7 @@ def ensure_p3_features(base_dataset: pd.DataFrame, data_version: str) -> None:
     stamp = P3_FEATURES.with_suffix(".data_version")
     if P3_FEATURES.exists() and stamp.exists() and stamp.read_text().strip() == data_version:
         return
+
     from mibici.P3.features import main as build_p3_features
 
     INTERIM_DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -169,25 +170,23 @@ def ensure_p3_features(base_dataset: pd.DataFrame, data_version: str) -> None:
 def run_p3(base_dataset, data_version, date_range, model, params, overrides):
     from mibici.modeling.p3 import train as p3_train
 
-    if hasattr(p3_train, "train_p3_model"):  # cuando P3 adopte el contrato común
-        return _call_question_fn(
-            p3_train.train_p3_model,
-            "p3",
-            base_dataset,
-            data_version,
-            date_range,
-            model,
-            params,
-            overrides,
-        )
-    # Adaptador para el código actual de P3 (comando typer `main` que lee un CSV de features)
     ensure_p3_features(base_dataset, data_version)
+
     known = {"min_k", "max_k", "random_state"}
-    return p3_train.main(
+    training_params = {
+        key: value
+        for key, value in params.items()
+        if key in known
+    }
+
+    return p3_train.train_p3_model(
         features_path=P3_FEATURES,
         experiment_name=EXPERIMENT_NAME,
-        date_range=f"{date_range['from'].replace('_', '-')} a {date_range['to'].replace('_', '-')}",
-        **{k: v for k, v in params.items() if k in known},
+        date_range=(
+            f"{date_range['from'].replace('_', '-')} a "
+            f"{date_range['to'].replace('_', '-')}"
+        ),
+        **training_params,
     )
 
 
