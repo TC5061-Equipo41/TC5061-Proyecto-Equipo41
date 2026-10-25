@@ -1,9 +1,24 @@
-python: "3.14.7"
-
+# Entorno del MLflow Project (mlflow run). Mismas versiones fijas que requirements.txt:
+# si cambias una versión, cámbiala en ambos archivos.
+python: "3.14"
 build_dependencies:
-  - pip
-  - setuptools
-  - wheel
-
+  - pip==26.2.2
 dependencies:
-  - -r requirements.txt
+  - numpy==2.5.4
+  - mlflow==3.17.0
+  - pandas==3.0.6
+  - scikit-learn==1.9.1
+  - scipy==1.18.1
+  - seaborn==0.13.2
+  - matplotlib==3.11.2
+  - pyarrow==25.0.1
+  - folium==0.20.0
+  - joblib==1.6.0
+  - requests==2.34.2
+  - loguru==0.7.3
+  - mkdocs==1.6.1
+  - python-dotenv==1.2.4
+  - ruff==0.17.1
+  - tqdm==4.70.1
+  - typer==0.27.3
+  - -e .

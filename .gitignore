@@ -1,5 +1,6 @@
-# Data
-/data/
+# Data: nada de MiBici se versiona, salvo el manifiesto de versión de datos
+/data/*
+!/data/manifest.json
 
 # Mac OS-specific storage files
 .DS_Store
@@ -190,12 +191,20 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# MLflow
+# MLFlow
 mlflow.db
-mlruns/
-mlartifacts/
+/mlartifacts
+
+# Datos locales de MiBici: no subir a Git
+/data/raw/
+/data/interim/
+/data/processed/
 
 # Modelos serializados generados localmente
 /models/
 *.pkl
 *.joblib
+
+# MLflow y resultados locales
+mlruns/
+mlartifacts/

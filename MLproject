@@ -1,23 +1,23 @@
+# MLflow Project · MiBici · Equipo 41
+# Los valores "default" se resuelven en mibici/config.py (TRAIN_DEFAULTS), para no repetirlos.
+#
+#   mlflow run . -e ingest --experiment-name mibici-equipo41
+#   mlflow run . -e train  --experiment-name mibici-equipo41 -P question=p1 -P params="alpha=0.5"
 name: mibici-equipo41
 
 python_env: python_env.yaml
 
 entry_points:
-
   ingest:
     command: "python -m mibici.dataset"
 
   train:
     parameters:
-      question:
-        type: string
-        default: p2
-
-      model:
-        type: string
-        default: all
-
-    command: >
+      question: {type: string, default: all}        # p1 | p2 | p3 | all
+      model: {type: string, default: default}       # default = config.TRAIN_DEFAULTS[question]
+      params: {type: string, default: default}      # "clave=valor,clave=valor"
+      stage_of_work: {type: string, default: default}  # baseline | search | candidate
+    command: >-
       python -m mibici.modeling.train
-      --question {question}
-      --model {model}
+      --question {question} --model {model} --params {params}
+      --stage-of-work {stage_of_work}
