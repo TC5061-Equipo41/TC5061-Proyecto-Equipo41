@@ -1,5 +1,5 @@
-﻿import pandas as pd
-from loguru import logger
+﻿from loguru import logger
+import pandas as pd
 
 from mibici.config import (
     INTERIM_DATA_DIR,

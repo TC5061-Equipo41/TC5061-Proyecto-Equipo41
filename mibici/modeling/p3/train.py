@@ -2,19 +2,20 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 from pathlib import Path
+import subprocess
 
 import joblib
 import matplotlib
+
 matplotlib.use("Agg")
+from loguru import logger
 import matplotlib.pyplot as plt
 import mlflow
+from mlflow.models import infer_signature
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
-from loguru import logger
-from mlflow.models import infer_signature
 from sklearn.cluster import AgglomerativeClustering, KMeans
 from sklearn.metrics import silhouette_score
 from sklearn.pipeline import Pipeline

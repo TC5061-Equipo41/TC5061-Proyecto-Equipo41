@@ -33,11 +33,6 @@ lint:
 	ruff format --check
 	ruff check
 
-## Install dev dependencies (tests and quality checks)
-.PHONY: requirements-dev
-requirements-dev:
-	$(PYTHON_INTERPRETER) -m pip install -r requirements-dev.txt
-
 ## Run the test suite
 .PHONY: test
 test:
@@ -49,10 +44,6 @@ format:
 	ruff check --fix
 	ruff format
 
-
-
-
-
 ## Set up Python interpreter environment
 .PHONY: create_environment
 create_environment:
@@ -60,7 +51,10 @@ create_environment:
 	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
 	
 
-
+## Security scan of the source code
+.PHONY: security
+security:
+	bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
 
 #################################################################################
 # PROJECT RULES                                                                 #

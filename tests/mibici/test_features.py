@@ -1,4 +1,3 @@
-"""Pruebas de mibici/features.py (limpieza común de viajes)."""
 
 import pandas as pd
 import pytest
@@ -32,7 +31,7 @@ def test_transform_datetime_columns_converts_text(raw_trips_df):
 
     for column in columns:
         assert pd.api.types.is_datetime64_any_dtype(result[column])
-    # No debe modificar el DataFrame original
+
     assert not pd.api.types.is_datetime64_any_dtype(raw_trips_df["Inicio_del_viaje"])
 
 

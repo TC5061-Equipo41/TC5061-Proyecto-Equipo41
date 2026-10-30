@@ -33,7 +33,11 @@ force-sort-within-sections = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra"
+addopts = "-ra --import-mode=importlib"
 markers = [
     "slow: pruebas lentas (p. ej. entrenamiento completo); omitir con -m 'not slow'",
 ]
+
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "build"]

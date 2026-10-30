@@ -5,12 +5,10 @@ import tempfile
 
 import matplotlib.pyplot as plt
 import mlflow
-import mlflow.sklearn
-import pandas as pd
-
 from mlflow import MlflowClient
 from mlflow.models import infer_signature
-
+import mlflow.sklearn
+import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.ensemble import (
     HistGradientBoostingClassifier,
@@ -39,7 +37,6 @@ from mibici.p2.dataset import (
     RISK_THRESHOLD,
     create_p2_dataset,
 )
-
 
 FEATURES = [
     "departures",

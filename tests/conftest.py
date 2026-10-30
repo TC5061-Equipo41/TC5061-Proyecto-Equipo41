@@ -74,3 +74,17 @@ def raw_trips_df() -> pd.DataFrame:
             ],
         }
     )
+
+
+@pytest.fixture
+def raw_stations_df() -> pd.DataFrame:
+    """Catálogo de estaciones con nombres crudos; 116 y 138 son IDs reemplazados."""
+    return pd.DataFrame(
+        {
+            "id": [1, 2, 116, 138, 248, 249],
+            "name": ["A", "B", "Vieja 116", "Vieja 138", "Nueva 248", "Nueva 249"],
+            "latitude": [20.6, 20.7, 20.8, 20.9, 20.8, 20.9],
+            "longitude": [-103.3, -103.4, -103.5, -103.6, -103.5, -103.6],
+            "dcapacity": [10, 12, 8, 6, 8, 6],
+        }
+    )
