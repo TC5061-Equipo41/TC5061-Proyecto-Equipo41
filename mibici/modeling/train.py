@@ -315,7 +315,6 @@ def dispatch(
             model if question != "all" else "default",
             params if question != "all" else "default",
         )
-        logger.info(f"{q.upper()}: modelo={chosen} params={resolved}")
         t0 = int(time.time() * 1000) - 1000
         RUNNERS[q](base_dataset, data_version, date_range, chosen, resolved, overrides)
         mlflow.end_run()  # por si alguna función dejó una corrida abierta

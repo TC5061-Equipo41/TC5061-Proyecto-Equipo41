@@ -1,30 +1,14 @@
-from pathlib import Path
+import os
 
-from loguru import logger
-from tqdm import tqdm
-import typer
+from dotenv import load_dotenv
+import mlflow
+import numpy as np
+import pandas as pd
 
-from mibici.config import MODELS_DIR, PROCESSED_DATA_DIR
+load_dotenv()
+mlflow.set_tracking_uri(os.getenv("MLFLOW_TRACKING_URI"))
 
-app = typer.Typer()
+model = mlflow.sklearn.load_model("models:/mibici-equipo41-p1-demanda@champion")
 
-
-@app.command()
-def main(
-    # ---- REPLACE DEFAULT PATHS AS APPROPRIATE ----
-    features_path: Path = PROCESSED_DATA_DIR / "test_features.csv",
-    model_path: Path = MODELS_DIR / "model.pkl",
-    predictions_path: Path = PROCESSED_DATA_DIR / "test_predictions.csv",
-    # -----------------------------------------
-):
-    # ---- REPLACE THIS WITH YOUR OWN CODE ----
-    logger.info("Performing inference for model...")
-    for i in tqdm(range(10), total=10):
-        if i == 5:
-            logger.info("Something happened for iteration 5.")
-    logger.success("Inference complete.")
-    # -----------------------------------------
-
-
-if __name__ == "__main__":
-    app()
+X = pd.DataFrame([{"Origen_Id": 12, "Hora": 8, "Dia": "Monday"}])
+print(np.maximum(0, model.predict(X)))
