@@ -5,7 +5,7 @@ import pandas as pd
 def delete_user_data_columns(frame: pd.DataFrame, columns: list[str]):
     """Elimina las columnas indicadas de datos de usuarios e ignora las que no existen."""
     return frame.drop(
-        columns,
+        columns=columns,
         errors="ignore",
     )
 

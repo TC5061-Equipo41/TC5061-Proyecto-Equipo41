@@ -33,6 +33,16 @@ lint:
 	ruff format --check
 	ruff check
 
+## Install dev dependencies (tests and quality checks)
+.PHONY: requirements-dev
+requirements-dev:
+	$(PYTHON_INTERPRETER) -m pip install -r requirements-dev.txt
+
+## Run the test suite
+.PHONY: test
+test:
+	$(PYTHON_INTERPRETER) -m pytest
+
 ## Format source code with ruff
 .PHONY: format
 format:
