@@ -172,11 +172,36 @@ DATA_METADATA = {
 }
 ```
 
-3. Ejecuta `dataset.py` para que se generen los datos procesados en /data/interim, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario
+3. Ejecuta `dataset.py` para que se generen los datos procesados en `/data/interim`, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario.
 
----
+## Pruebas y validaciones
 
----
+### PyTest
+
+```bash
+python -m pytest
+```
+
+Resultado: **35 pruebas aprobadas**.
+![Ejecución de PyTest](reports/Evidence/pytest_execution.png)
+
+### DeepChecks
+
+```bash
+python mibici/validation/validate_p3_data.py
+```
+
+Resultado: validación de datos completada correctamente.
+![Ejecución de DeepChecks](reports/Evidence/deepchecks_execution.png)
+
+### Bandit
+
+```bash
+python -m bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
+```
+
+Resultado: análisis de seguridad completado y reporte HTML generado.
+![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
 
 ## P3. Agrupamiento de estaciones por patrones de uso
 
