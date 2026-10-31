@@ -2,11 +2,12 @@
 from pathlib import Path
 
 import matplotlib
+
 matplotlib.use("Agg")
+from loguru import logger
 import matplotlib.pyplot as plt
 import pandas as pd
 import typer
-from loguru import logger
 
 from mibici.config import FIGURES_DIR, PROCESSED_DATA_DIR
 

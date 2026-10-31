@@ -33,15 +33,16 @@ lint:
 	ruff format --check
 	ruff check
 
+## Run the test suite
+.PHONY: test
+test:
+	$(PYTHON_INTERPRETER) -m pytest
+
 ## Format source code with ruff
 .PHONY: format
 format:
 	ruff check --fix
 	ruff format
-
-
-
-
 
 ## Set up Python interpreter environment
 .PHONY: create_environment
@@ -50,7 +51,10 @@ create_environment:
 	@echo ">>> New virtualenv created. Activate with:\nworkon $(PROJECT_NAME)"
 	
 
-
+## Security scan of the source code
+.PHONY: security
+security:
+	bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
 
 #################################################################################
 # PROJECT RULES                                                                 #

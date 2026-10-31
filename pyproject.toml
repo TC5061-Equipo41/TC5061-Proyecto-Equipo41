@@ -21,7 +21,7 @@ requires-python = "~=3.14.0"
 [tool.ruff]
 line-length = 99
 src = ["mibici"]
-include = ["pyproject.toml", "mibici/**/*.py"]
+include = ["pyproject.toml", "mibici/**/*.py", "tests/**/*.py"]
 
 [tool.ruff.lint]
 extend-select = ["I"]  # Add import sorting
@@ -30,3 +30,14 @@ extend-select = ["I"]  # Add import sorting
 known-first-party = ["mibici"]
 force-sort-within-sections = true
 
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --import-mode=importlib"
+markers = [
+    "slow: pruebas lentas (p. ej. entrenamiento completo); omitir con -m 'not slow'",
+]
+
+
+[tool.bandit]
+exclude_dirs = [".venv", "tests", "build"]

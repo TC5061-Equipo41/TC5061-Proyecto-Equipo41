@@ -1,8 +1,8 @@
 
 from pathlib import Path
 
-import pandas as pd
 from loguru import logger
+import pandas as pd
 import typer
 
 from mibici.config import INTERIM_DATA_DIR, PROCESSED_DATA_DIR

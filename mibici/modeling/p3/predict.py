@@ -1,10 +1,10 @@
 ﻿from pathlib import Path
 
 import joblib
+from loguru import logger
 import numpy as np
 import pandas as pd
 import typer
-from loguru import logger
 
 from mibici.config import MODELS_DIR, PROCESSED_DATA_DIR
 
@@ -83,6 +83,7 @@ def main(
 
     else:
         import mlflow
+
         from mibici.config import MLFLOW_TRACKING_URI
 
         mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
