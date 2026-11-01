@@ -3,7 +3,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import subprocess
 
 import joblib
 import matplotlib
@@ -21,6 +20,7 @@ from sklearn.metrics import silhouette_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 from mibici.config import (
     FIGURES_DIR,
     MODELS_DIR,
@@ -107,14 +107,8 @@ def configure_mlflow(experiment_name: str) -> None:
 
 
 def get_git_commit() -> str:
-    result = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=PROJ_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return result.stdout.strip() or "unknown"
+    """Commit actual de Git (implementación común en mibici.modeling.tracking)."""
+    return tracking_git_commit()
 
 
 def log_candidate_model(model, X: pd.DataFrame, labels: np.ndarray) -> None:

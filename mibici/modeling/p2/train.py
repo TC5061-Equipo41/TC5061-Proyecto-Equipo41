@@ -1,6 +1,5 @@
 import json
 import os
-import subprocess
 import tempfile
 
 import matplotlib.pyplot as plt
@@ -29,6 +28,7 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
+from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 from mibici.config import (
     FIGURES_DIR,
     INTERIM_DATA_DIR,
@@ -66,13 +66,8 @@ SELECTION_METRIC = "test_average_precision"
 
 
 def get_git_commit():
-    try:
-        return subprocess.check_output(
-            ["git", "rev-parse", "HEAD"],
-            text=True,
-        ).strip()
-    except Exception:
-        return "unknown"
+    """Commit actual de Git (implementación común en mibici.modeling.tracking)."""
+    return tracking_git_commit()
 
 
 def get_train_test_split(
