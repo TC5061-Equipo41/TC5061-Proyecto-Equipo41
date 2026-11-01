@@ -174,34 +174,87 @@ DATA_METADATA = {
 
 3. Ejecuta `dataset.py` para que se generen los datos procesados en `/data/interim`, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario.
 
-## Pruebas y validaciones
+## Pruebas, validación de datos y seguridad
 
-### PyTest
+Todo se ejecuta desde la raíz del repositorio con el entorno del proyecto activado (Python 3.14,
+`pip install -r requirements.txt`). Las pruebas no usan los datos reales ni el servidor de
+MLflow: trabajan con datos sintéticos y un tracking temporal (`tests/conftest.py`).
 
-```bash
-python -m pytest
+| Comando | Qué hace | Requiere |
+|---|---|---|
+| `make test` | PyTest: pruebas unitarias, reproducibilidad del entrenamiento e higiene del repo | Entorno del proyecto |
+| `make security` | bandit (código), pip-audit (dependencias) y detect-secrets (credenciales) | Entorno del proyecto + internet (pip-audit) |
+| `make validation-env` | Crea el entorno de validación (Python 3.12) en `~/.venvs/mibici-validation` | [uv](https://docs.astral.sh/uv/), una sola vez |
+| `make validate` | DeepChecks sobre los datos de P1, P2 y P3; reportes en `reports/validation/` | Datos en `data/raw/` + entorno de validación |
+| `make check` | Los tres anteriores en orden | Todo lo anterior |
+
+Sin `make`: `python -m pytest`; los comandos de seguridad y validación están en el `Makefile`.
+
+### Pruebas (PyTest)
+
+```
+tests/
+├── conftest.py                      # datos sintéticos y MLflow temporal
+├── mibici/test_dataset.py           # ingesta, manifiesto, hash y data_version
+├── mibici/test_features.py          # limpieza y variables comunes
+├── modeling/test_reproducibility.py # reproducibilidad de P1, P2 y P3
+└── test_repo_hygiene.py             # seguridad del repositorio como pruebas
 ```
 
-Resultado: **35 pruebas aprobadas**.
-![Ejecución de PyTest](reports/Evidence/pytest_execution.png)
+- **Unitarias**: casos normales y límite de la ingesta (`clean_trips`, `join_station_metadata`,
+  `build_manifest`, `compute_data_version`…) y de `features.py` (fechas inválidas, duraciones
+  negativas, duplicados y nulos).
+- **Reproducibilidad**: cada pregunta entrena dos veces con la misma semilla y exige
+  resultados idénticos — predicciones de Ridge, Random Forest y HistGradientBoosting (P1),
+  probabilidades y métricas de la regresión logística (P2), etiquetas y silhouette de K-Means
+  (P3). Dos pruebas de control cambian la semilla y verifican que la diferencia sí se detecta.
+- **Higiene del repositorio**: rutas sensibles cubiertas por `.gitignore`, ningún archivo de
+  datos, MLflow, modelos o credenciales versionado hoy **ni en el historial**, `.env.example`
+  sin secretos y detect-secrets sin hallazgos nuevos.
 
-### DeepChecks
+### Validación de datos (DeepChecks)
+
+`mibici/validation/validate_p3_data.py` ejecuta la suite de integridad de DeepChecks (tipos
+mezclados, nulos, duplicados, valores únicos, caracteres especiales, etiquetas en conflicto,
+correlaciones) sobre la tabla de P1, la tabla estación-hora de P2 y las características de
+estaciones de P3.
+
+DeepChecks 0.19.1, su última versión, no es compatible con el stack del proyecto: importa
+`pkg_resources` (ya no incluido en setuptools ≥ 81), usa `np.Inf` (eliminado en numpy 2) y pide
+el scorer `max_error` (eliminado en scikit-learn 1.9). Por eso corre en un **entorno aparte**
+con Python 3.12 y versiones fijas en `requirements-validation.txt`. `make validate`:
+
+1. En el entorno del proyecto, `python -m mibici.validation.prepare_inputs` deja listo el
+   dataset común (`data/interim/`) y `data/processed/p3_station_features.csv`.
+2. En el entorno de validación corre `validate_p3_data.py`, que lee esos archivos y escribe
+   los reportes HTML.
 
 ```bash
-python mibici/validation/validate_p3_data.py
+make validation-env    # una sola vez
+make validate
 ```
 
-Resultado: validación de datos completada correctamente.
-![Ejecución de DeepChecks](reports/Evidence/deepchecks_execution.png)
+### Seguridad
 
-### Bandit
+| Chequeo | Herramienta | Resultado |
+|---|---|---|
+| Código | `bandit -c pyproject.toml -r mibici` | Sin hallazgos. Los 11 avisos previos (llamadas a `git` con `subprocess` en tres copias de la misma función) se corrigieron: una sola función en `tracking.py`, con ruta absoluta a `git` y argumentos fijos; las 2 supresiones `# nosec` restantes están justificadas en el código. |
+| Dependencias | `pip-audit -r requirements.txt` | Sin vulnerabilidades. Se encontró **CVE-2026-53995** (path traversal en FileStore) en mlflow 3.17.0 y se actualizó a 3.17.2. |
+| Dependencias de validación | `pip-audit` sobre `~/.venvs/mibici-validation` | 3 avisos en setuptools 80.9.0 (construcción de sdist y wheels legacy en Windows). **Riesgo aceptado**: DeepChecks necesita `pkg_resources`, que no existe en las versiones corregidas, y el entorno de validación no construye ni instala paquetes de terceros. |
+| Credenciales | `detect-secrets` con `.secrets.baseline` | Sin secretos. La línea base excluye por regla los falsos positivos: hashes SHA-256 del manifiesto, imágenes PNG embebidas en notebooks y reportes HTML de DeepChecks. |
+| Datos y variables de entorno | `.gitignore` + `.env.example` + `tests/test_repo_hygiene.py` | Datos de MiBici, `mlflow.db`, `mlartifacts/`, modelos y `.env` ignorados; ninguno aparece en el historial. Las variables locales van en `.env` (copiar desde `.env.example`). |
 
-```bash
-python -m bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
-```
+### Evidencia
 
-Resultado: análisis de seguridad completado y reporte HTML generado.
-![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
+| Ejecución | Captura |
+|---|---|
+| PyTest | ![PyTest](reports/Evidence/pytest_execution.png) |
+| DeepChecks | ![DeepChecks](reports/Evidence/deepchecks_execution.png) |
+| bandit | ![bandit](reports/Evidence/bandit_execution.png) |
+| pip-audit y detect-secrets | ![Seguridad](reports/Evidence/security_execution.png) |
+| Reproducibilidad | ![Reproducibilidad](reports/Evidence/reproducibility_execution.png) |
+
+Reportes generados: `reports/security-scan/bandit.html` y `reports/validation/*.html`.
 
 ## P3. Agrupamiento de estaciones por patrones de uso
 
