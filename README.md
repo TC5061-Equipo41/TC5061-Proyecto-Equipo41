@@ -8,7 +8,7 @@ Dar respuesta a preguntas de negocio con técnicas de Machine Learning y DevOps 
 
 - P1: ¿Cuántos viajes se iniciarán en una estación o zona en un periodo futuro?.
 - P2: ¿Una estación estará en riesgo de quedarse sin bicicletas o sin anclajes disponibles en un periodo futuro?
-- P3:	¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
+- P3: ¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
 
 ## Organización del Proyecto
 
@@ -127,10 +127,10 @@ mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 \
 - Sin MLflow Project también funciona: `python -m mibici.dataset` y
   `python -m mibici.modeling.train --question p1`.
 
-| Punto de entrada | Parámetros (`-P`) | Qué hace |
-|---|---|---|
-| `ingest` | — | `mibici/dataset.py`: Parquet en `data/interim/` y `data/manifest.json` |
-| `train` | `question` (p1, p2, p3, all), `model`, `params` (`"clave=valor,…"`), `stage_of_work` | `mibici/modeling/train.py` llama a `train_pX_model(...)` |
+| Punto de entrada | Parámetros (`-P`)                                                                    | Qué hace                                                               |
+| ---------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `ingest`         | —                                                                                    | `mibici/dataset.py`: Parquet en `data/interim/` y `data/manifest.json` |
+| `train`          | `question` (p1, p2, p3, all), `model`, `params` (`"clave=valor,…"`), `stage_of_work` | `mibici/modeling/train.py` llama a `train_pX_model(...)`               |
 
 ### Versión de datos: `data/manifest.json`
 
@@ -142,11 +142,11 @@ archivo de `data/` que se versiona en Git y se registra como artefacto en cada c
 
 ### Trazabilidad común en MLflow (`mibici/modeling/tracking.py`)
 
-| Función | Qué registra |
-|---|---|
-| `set_common_tags(question, model_family, stage_of_work)` | Etiquetas `team`, `git_commit`, `git_dirty`, `question`, `model_family`, `stage_of_work` |
-| `log_data_version(dataset=...)` | `data/manifest.json`, etiqueta `data_version` y el dataset con `mlflow.log_input` |
-| `log_run_config(dict)` | `config/run_config.json` y copia de `MLproject`, `python_env.yaml`, `requirements.txt` y `config.py` |
+| Función                                                  | Qué registra                                                                                         |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `set_common_tags(question, model_family, stage_of_work)` | Etiquetas `team`, `git_commit`, `git_dirty`, `question`, `model_family`, `stage_of_work`             |
+| `log_data_version(dataset=...)`                          | `data/manifest.json`, etiqueta `data_version` y el dataset con `mlflow.log_input`                    |
+| `log_run_config(dict)`                                   | `config/run_config.json` y copia de `MLproject`, `python_env.yaml`, `requirements.txt` y `config.py` |
 
 El despachador (`mibici/modeling/train.py`) crea una corrida `dispatch-…`, llama a
 `train_pX_model(original_data, data_version, date_range, model=None, params=None)` y aplica estas
@@ -202,6 +202,23 @@ python -m bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/ba
 
 Resultado: análisis de seguridad completado y reporte HTML generado.
 ![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
+
+## Correr FastAPI con Docker
+
+Hemos optado por obtener el modelo del MLFlow registry, a través del nombre y el alias de champion, después cargamos este modelo, obteniendo el archivo MLmodel y model.skops (necesarios para ejecutar correctamente las predicciones). Los pasos para ejecutar FastAPI y hacerle requests a un modelo con docker son los siguientes
+**Precondiciones**: Se asume que el modelo (en este caso P3) ya esta entrenado localmente, si no es el caso se tendrá que hacerlo con `mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3`
+
+**Pasos**:
+
+1. Inicia el MLFlow server con `mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000`
+2. Corre el script `python -m mibici.api.scripts.export_model` para cargar el modelo
+3. Construye la imagen de docker con `docker build -t mibici-api .` esto se tiene que ejecutar desde la ruta de este proyecto ya que ahí se encuentra el Dockerfile. La imagen ya tiene contexto de los archivos del modelo, y no es necesario tener un servidor de MLFlow corriendo en el contenedor.
+4. Corre el contenedor de docker `docker run --rm -p 8000:8000 mibici-api`
+5. Ejecuta pruebas desde tu local
+
+```
+curl -X POST http://0.0.0.0:8000/predict/p3 -H "Content-Type: application/json" -d '{"viajes_salida": 120, "viajes_llegada": 110, "duracion_promedio": 14.5}'
+```
 
 ## P3. Agrupamiento de estaciones por patrones de uso
 
