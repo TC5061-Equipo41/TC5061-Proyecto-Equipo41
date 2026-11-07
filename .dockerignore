@@ -1,0 +1,14 @@
+.git
+.venv
+.env
+__pycache__/
+data/
+models/*
+!models/p3_model/
+mlruns/
+mlartifacts/
+mlflow.db
+notebooks/
+reports/
+docs/
+tests/
