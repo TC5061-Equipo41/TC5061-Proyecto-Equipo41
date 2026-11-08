@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 import os
+from pathlib import Path
 
 from fastapi import FastAPI
 import mlflow
@@ -16,8 +17,15 @@ MODEL_URI = os.getenv("MODEL_URI", f"models:/{MODEL_NAME}@champion")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.model_name = MODEL_NAME
-    app.state.model_version = MODEL_VERSION
     app.state.model_uri = MODEL_URI
+    # export_model.py anota en VERSION la versión del registry que tenía el alias; si el modelo
+    # viene empaquetado en la imagen, se informa ese número junto al alias.
+    version_file = Path(MODEL_URI) / "VERSION"
+    app.state.model_version = (
+        f"{version_file.read_text().strip()} ({MODEL_VERSION})"
+        if version_file.is_file()
+        else MODEL_VERSION
+    )
 
     try:
         app.state.model = mlflow.pyfunc.load_model(MODEL_URI)
