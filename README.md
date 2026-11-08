@@ -258,20 +258,71 @@ Reportes generados: `reports/security-scan/bandit.html` y `reports/validation/*.
 
 ## Correr FastAPI con Docker
 
-Hemos optado por obtener el modelo del MLFlow registry, a través del nombre y el alias de champion, después cargamos este modelo, obteniendo el archivo MLmodel y model.skops (necesarios para ejecutar correctamente las predicciones). Los pasos para ejecutar FastAPI y hacerle requests a un modelo con docker son los siguientes
-**Precondiciones**: Se asume que el modelo (en este caso P3) ya esta entrenado localmente, si no es el caso se tendrá que hacerlo con `mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3`
+La API sirve el modelo de **P3** (grupos de estaciones). El modelo se toma del Model Registry de
+MLflow por nombre y alias (`mibici-equipo41-p3-grupos@champion`) y **se empaqueta en la imagen**:
+`export_model.py` descarga del registry la versión que tiene el alias (`MLmodel`, `model.skops`,
+firma de entrada) a `models/p3_model/` y anota su número en `models/p3_model/VERSION`. Así el
+contenedor no necesita un servidor de MLflow para arrancar, y la imagen queda atada a una versión
+concreta del modelo.
 
-**Pasos**:
+**Precondición**: el modelo de P3 debe estar entrenado y registrado. Si no lo está:
+`mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3`.
 
-1. Inicia el MLFlow server con `mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000`
-2. Corre el script `python -m mibici.api.scripts.export_model` para cargar el modelo
-3. Construye la imagen de docker con `docker build -t mibici-api .` esto se tiene que ejecutar desde la ruta de este proyecto ya que ahí se encuentra el Dockerfile. La imagen ya tiene contexto de los archivos del modelo, y no es necesario tener un servidor de MLFlow corriendo en el contenedor.
-4. Corre el contenedor de docker `docker run --rm -p 8000:8000 mibici-api`
-5. Ejecuta pruebas desde tu local
+**Pasos** (desde la raíz del repositorio, con Docker Desktop abierto):
 
+1. Levanta MLflow: `mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000`
+2. En otra terminal, descarga el modelo campeón del registry:
+   ```bash
+   export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+   python -m mibici.api.scripts.export_model
+   ```
+3. Construye la imagen: `docker build -t mibici-api .`
+4. Levanta el contenedor: `docker run --rm --name mibici-api -p 8000:8000 mibici-api`
+5. Prueba la API desde otra terminal (o en `http://localhost:8000/docs`):
+
+| Endpoint | Qué devuelve |
+|---|---|
+| `GET /health` | Estado del servicio y si el modelo quedó cargado |
+| `GET /predict/model-info` | Nombre, versión y alias del modelo, y las columnas de su firma |
+| `POST /predict/p3` | Grupo predicho para una estación |
+
+**Entrada.** La petición trae el uso agregado de una estación, con el mismo esquema que
+`data/processed/p3_station_features.csv`. La API calcula las variables del modelo
+(proporciones por franja horaria y logaritmos de los viajes) con la misma función del
+entrenamiento (`prepare_features`) y entrega al modelo solo las columnas de su firma, sea cual sea
+el candidato que quedó como campeón.
+
+```bash
+curl -X POST http://localhost:8000/predict/p3 \
+  -H "Content-Type: application/json" \
+  -d '{"viajes_salida": 856, "viajes_llegada": 754, "salidas_manana": 235,
+       "salidas_tarde": 229, "salidas_noche": 380, "salidas_madrugada": 12,
+       "salidas_fin_semana": 179, "duracion_promedio": 13.4}'
 ```
-curl -X POST http://0.0.0.0:8000/predict/p3 -H "Content-Type: application/json" -d '{"viajes_salida": 120, "viajes_llegada": 110, "duracion_promedio": 14.5}'
+
+```json
+{"grupo_predicho": 0, "modelo": "mibici-equipo41-p3-grupos", "version": "1 (champion)"}
 ```
+
+El número de grupo y la versión dependen del modelo registrado en cada equipo.
+
+**Validación (Pydantic).** Todos los campos son obligatorios; los conteos son enteros ≥ 0; la
+duración, en minutos, está entre 0 y 1440; la suma de salidas por franja y las salidas de fin de
+semana no pueden superar `viajes_salida`; no se aceptan campos extra. Una entrada inválida
+responde `422` con el campo y el motivo, por ejemplo:
+
+```json
+{"detail": [{"type": "greater_than_equal", "loc": ["body", "viajes_salida"],
+             "msg": "Input should be greater than or equal to 0", "input": -5, "ctx": {"ge": 0}}]}
+```
+
+### Evidencia del contenedor
+
+| Paso | Captura |
+|---|---|
+| `docker build` | ![docker build](reports/Evidence/docker_build.png) |
+| `docker run` | ![docker run](reports/Evidence/docker_run.png) |
+| Peticiones a la API | ![API](reports/Evidence/api_requests.png) |
 
 ## P3. Agrupamiento de estaciones por patrones de uso
 
