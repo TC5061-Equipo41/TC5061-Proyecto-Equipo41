@@ -307,7 +307,7 @@ curl -X POST http://localhost:8000/predict/p3 \
 El número de grupo y la versión dependen del modelo registrado en cada equipo.
 
 **Validación (Pydantic).** Todos los campos son obligatorios; los conteos son enteros ≥ 0; la
-duración, en minutos, está entre 0 y 1440; la suma de salidas por franja y las salidas de fin de
+duración promedio, en minutos, es mayor que 0 y menor o igual que 1440; la suma de salidas por franja y las salidas de fin de
 semana no pueden superar `viajes_salida`; no se aceptan campos extra. Una entrada inválida
 responde `422` con el campo y el motivo, por ejemplo:
 
@@ -315,6 +315,74 @@ responde `422` con el campo y el motivo, por ejemplo:
 {"detail": [{"type": "greater_than_equal", "loc": ["body", "viajes_salida"],
              "msg": "Input should be greater than or equal to 0", "input": -5, "ctx": {"ge": 0}}]}
 ```
+
+### Estrategia de despliegue y reproducibilidad
+
+Para el modelo P3 de MiBici se seleccionó una estrategia de **inferencia bajo demanda** mediante una API REST desarrollada con FastAPI. El servicio recibe características agregadas de los viajes de una estación y devuelve su grupo estimado, sin volver a entrenar el modelo en cada petición.
+
+Esta modalidad facilita integrar el agrupamiento con aplicaciones externas mediante HTTP. La predicción se obtiene cuando un cliente consulta el servicio, pero esto **no significa que los datos de viajes se reciban en tiempo real**: las entradas corresponden a métricas agregadas previamente. Por ello, el servicio es adecuado para consultas puntuales; si se necesitara clasificar periódicamente un gran número de estaciones, podría incorporarse un proceso adicional de inferencia por lotes.
+
+Se eligió **empaquetar una copia del modelo en la imagen**, en lugar de conectarse al Model Registry durante cada arranque. Antes de construir el contenedor, `python -m mibici.api.scripts.export_model` recupera del registro MLflow el modelo `mibici-equipo41-p3-grupos` con alias `champion` y lo guarda en `models/p3_model/`, junto con su firma y el archivo `VERSION`. Esto evita que la API requiera un servidor MLflow disponible durante la inferencia.
+
+El contenedor reúne la aplicación, el modelo exportado y las dependencias necesarias, lo que favorece la **portabilidad y la reproducibilidad del despliegue**. El archivo `models/p3_model/VERSION` permite identificar la versión utilizada. Si cambia el alias `champion`, se debe **volver a exportar el modelo y reconstruir la imagen** para publicar el cambio; el contenedor en ejecución no actualiza el modelo automáticamente.
+
+### Ejecución y consumo desde Windows PowerShell
+
+Esta alternativa complementa los comandos Bash anteriores. Desde la raíz del repositorio, con el entorno Python activado y **Docker Desktop iniciado**, usa las siguientes instrucciones. Se supone que el modelo P3 ya está entrenado y registrado en el MLflow local.
+
+**1. Iniciar MLflow** (mantén abierta esta terminal):
+
+```powershell
+mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000
+```
+
+**2. Exportar el modelo campeón** (en una segunda terminal):
+
+```powershell
+$env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
+python -m mibici.api.scripts.export_model
+```
+
+**3. Construir la imagen:**
+
+```powershell
+docker build -t mibici-api .
+```
+
+**4. Levantar el contenedor** (mantén abierta esta terminal):
+
+```powershell
+docker run --rm --name mibici-api -p 8000:8000 mibici-api
+```
+
+**5. Comprobar el servicio** (en otra terminal):
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get
+Invoke-RestMethod -Uri "http://localhost:8000/predict/model-info" -Method Get
+```
+
+**6. Consultar el grupo de una estación:**
+
+```powershell
+$body = @{
+    viajes_salida = 856
+    viajes_llegada = 754
+    salidas_manana = 235
+    salidas_tarde = 229
+    salidas_noche = 380
+    salidas_madrugada = 12
+    salidas_fin_semana = 179
+    duracion_promedio = 13.4
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/predict/p3" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+```
+
+La petición utiliza los mismos valores de ejemplo del apartado anterior. La respuesta incluye `grupo_predicho`, `modelo` y `version`; el grupo y la versión dependen del modelo campeón empaquetado. También está disponible la interfaz interactiva de FastAPI en <http://localhost:8000/docs> mientras el contenedor está activo.
 
 ### Evidencia del contenedor
 
@@ -348,7 +416,7 @@ Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el
 
 ### Modelo y evaluación
 
-Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_silhouette score_), con el objetivo de comparar la separación y cohesión de los grupos.
+Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (*_silhouette score_*), con el objetivo de comparar la separación y cohesión de los grupos.
 
 El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
 
