@@ -392,6 +392,135 @@ La petición utiliza los mismos valores de ejemplo del apartado anterior. La res
 | `docker run` | ![docker run](reports/Evidence/docker_run.png) |
 | Peticiones a la API | ![API](reports/Evidence/api_requests.png) |
 
+## Monitoreo de drift (Evidently)
+
+El objetivo es detectar cuándo los datos de producción se alejan de los de entrenamiento. Se
+monitorea el modelo **P3** que sirve la API (`mibici-equipo41-p3-grupos`, versión 1, alias
+`champion`, candidato `KMeans_conteos_k2`).
+
+### 1. Conjuntos de datos
+
+| Conjunto | Periodo | Viajes | Por qué |
+|---|---|---|---|
+| **Referencia** | octubre 2025 – septiembre 2026 | 4.497.119 | Es exactamente el periodo con que se entrenó el campeón de P3 (`data_version` `v1.0-cec7eeaf7d56`) |
+| **Actual** | octubre 2026 | 635.532 | Primer mes publicado por MiBici **después** del entrenamiento: es lo que el modelo recibe en producción |
+| Control estacional | octubre 2025 vs octubre 2026 | 420.064 vs 635.532 | Mismo mes un año antes, para separar temporada de cambio real |
+
+La API de P3 no registra las peticiones que recibe, así que la producción se representa con el mes
+siguiente de los datos abiertos. Ambos conjuntos pasan por el mismo pipeline del proyecto
+(`clean_trips`, `join_station_metadata` y `mibici/P3/features.py`) y se comparan en dos niveles:
+
+- **Viajes** (lo que llega al sistema): hora, día de la semana, fin de semana, duración, estación de
+  origen y de destino, viajes circulares y origen fuera del catálogo. Se usa una muestra aleatoria
+  de 200.000 viajes por periodo, con semilla 42, sin datos personales (género ni año de nacimiento).
+- **Estaciones** (la entrada del modelo P3): las variables de `p3_station_features.csv` con la
+  transformación de la API (`prepare_features`) y el **grupo que predice el campeón**. Como el
+  modelo se entrenó con totales de 12 meses, los conteos de octubre se llevan a escala anual
+  (× 365/31).
+
+### 2. Reportes
+
+```bash
+make drift                                     # referencia 2025_10:2026_09 vs actual 2026_10
+make drift REFERENCE=2025_10:2025_10 CURRENT=2026_10:2026_10   # control estacional
+```
+
+Genera en `reports/drift/` dos reportes de Evidently 0.7 (`DataDriftPreset` y `DataSummaryPreset`)
+y un resumen:
+
+| Archivo | Contenido |
+|---|---|
+| [`trips_drift.html`](reports/drift/trips_drift.html) | Drift por variable y calidad de los datos a nivel de viaje |
+| [`p3_stations_drift.html`](reports/drift/p3_stations_drift.html) | Drift por variable de la entrada del modelo P3 y de sus predicciones |
+| [`drift_summary.json`](reports/drift/drift_summary.json) | Tabla por variable, cambio de grupo por estación e indicadores de calidad |
+
+Evidently elige la prueba según el tamaño y el tipo de variable. Con más de 1.000 filas (viajes)
+usa distancias: Wasserstein normalizada para numéricas y Jensen-Shannon para categóricas, con drift
+si la distancia es ≥ 0,1. Con menos de 1.000 (estaciones) usa pruebas estadísticas: K-S para
+numéricas y prueba Z de proporciones para el grupo, con drift si p < 0,05. El reporte es
+reproducible: dos corridas dan exactamente los mismos valores.
+
+**Viajes · 3 de 8 variables con drift**
+
+| Variable | Prueba | Valor | Drift | Control oct-25 vs oct-26 |
+|---|---|---|---|---|
+| `duracion_minutos` | Wasserstein | 0,217 | **Sí** | 0,246 · Sí |
+| `destino_id` | Jensen-Shannon | 0,132 | **Sí** | 0,198 · Sí |
+| `origen_id` | Jensen-Shannon | 0,131 | **Sí** | 0,200 · Sí |
+| `dia_semana` | Jensen-Shannon | 0,041 | No | 0,048 · No |
+| `hora` | Wasserstein | 0,021 | No | 0,035 · No |
+| `viaje_circular` | Jensen-Shannon | 0,013 | No | 0,027 · No |
+| `origen_en_catalogo` | Jensen-Shannon | 0,013 | No | 0,000 · No |
+| `fin_de_semana` | Jensen-Shannon | 0,001 | No | 0,033 · No |
+
+**Estaciones (entrada de P3) · 7 de 11 variables con drift**
+
+| Variable | p-valor K-S / Z | Drift |
+|---|---|---|
+| `viajes_salida`, `viajes_llegada` (y sus logaritmos) | < 0,001 | **Sí** |
+| `duracion_promedio` | < 0,001 | **Sí** |
+| `grupo_predicho` | < 0,001 | **Sí** |
+| `salidas_noche_proporcion` | 0,035 | **Sí** (límite) |
+| `salidas_manana_proporcion` | 0,053 | No (límite) |
+| `salidas_fin_semana_proporcion` | 0,149 | No |
+| `salidas_madrugada_proporcion` | 0,275 | No |
+| `salidas_tarde_proporcion` | 0,367 | No |
+
+**Calidad de los datos**: buena en ambos periodos y mejor en octubre. Las estaciones fuera del
+catálogo pasan de 0,04 % a 0 %, los viajes de duración cero de 0,08 % a 0,03 %, y los de más de 3
+horas se mantienen en 0,01 %. No hay valores nulos en las variables usadas, porque `clean_trips`
+los descarta, y no aparecen fechas fuera del periodo.
+
+### 3. Interpretación
+
+**El sistema creció, pero se usa en los mismos horarios.**
+
+| Indicador | Referencia | Octubre 2025 | Octubre 2026 |
+|---|---|---|---|
+| Viajes por día | 12.321 | 13.551 | **20.501** (+66 % vs referencia, +51 % vs oct-25) |
+| Estaciones con viajes | 471 | 367 | 470 (+103 desde oct-25) |
+| Duración mediana / p99 | 9,4 / 33,4 min | 9,7 / 31,7 min | **8,0 / 29,8 min** |
+
+- **Hay drift significativo en cuánto se usa cada estación y cuánto duran los viajes.** El reparto
+  de viajes entre estaciones (`origen_id`, `destino_id`) y la duración cambian, y el cambio es
+  todavía mayor contra octubre 2025. Por eso no es un efecto de temporada: el sistema se expandió
+  (103 estaciones nuevas en un año) y la demanda creció un 51 % en el mismo mes. Con una red más
+  densa, los viajes son más cortos.
+- **No cambia cuándo se usa.** Hora, día de la semana, fin de semana y viajes circulares no
+  presentan drift en ninguna de las dos comparaciones, y las proporciones por franja horaria de
+  cada estación se mantienen (solo la nocturna queda en el límite). El patrón de uso es estable.
+
+**Implicaciones para el desempeño**
+
+- **P3 (modelo en producción).** El campeón agrupa por volumen y duración, y el grupo 1 es el de
+  alto uso (unos 27.600 viajes al año por estación, contra 5.800 del grupo 0). Con los datos de
+  octubre, **100 de 468 estaciones (21 %) cambian de grupo** y el grupo de alto uso pasa de 80 a
+  180 estaciones (de 17 % a 38 %). Esas estaciones no cambiaron su patrón horario: subieron con el
+  crecimiento general. La segmentación pierde sentido de negocio, porque "alto uso" significa
+  cosas distintas antes y después. Hay que reentrenar con datos recientes, y conviene comparar con
+  el candidato basado en proporciones, que no depende de la escala.
+- **P1 (viajes por estación y hora).** Entrenado con menor demanda, **subestimaría
+  sistemáticamente** los viajes, sobre todo en las estaciones que ganaron participación. Las
+  estaciones nuevas no tienen historia (arranque en frío). La forma horaria y semanal, que es lo
+  que más aporta al modelo, sigue siendo válida.
+- **P2 (riesgo de estación vacía o llena).** Más viajes por anclaje significa más eventos de
+  riesgo, así que la proporción de la clase positiva y el umbral de decisión calibrados ya no
+  corresponden. Los viajes más cortos aceleran la rotación de bicicletas.
+
+**Decisión**: hay drift de datos y de predicciones en P3, y no se explica por la temporada.
+Corresponde reentrenar con una ventana que incluya los meses recientes y comparar la nueva versión
+con el campeón actual antes de cambiar el alias `champion`. En este caso no aplica el control
+estacional para `grupo_predicho` (oct-25 vs oct-26): ahí ambos meses quedan en escala mensual y el
+modelo, entrenado con totales anuales, asigna todas las estaciones al grupo de bajo uso.
+
+### Evidencia
+
+| Paso | Captura |
+|---|---|
+| `make drift` en la Terminal | ![drift terminal](reports/Evidence/drift_terminal.png) |
+| Reporte de viajes (Evidently) | ![drift viajes](reports/Evidence/drift_trips.png) |
+| Reporte de estaciones / P3 (Evidently) | ![drift P3](reports/Evidence/drift_p3.png) |
+
 ## P3. Agrupamiento de estaciones por patrones de uso
 
 ### Pregunta de negocio

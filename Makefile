@@ -77,6 +77,14 @@ validate:
 	$(PYTHON_INTERPRETER) -m mibici.validation.prepare_inputs
 	PYTHONPATH=. "$(VALIDATION_VENV)/bin/python" -m mibici.validation.validate_p3_data
 
+## Drift de datos con Evidently: entrenamiento (REFERENCE) contra producción (CURRENT)
+## Reportes en reports/drift/. Ejemplo: make drift CURRENT=2026_10:2026_10
+REFERENCE ?= 2025_10:2026_09
+CURRENT ?= 2026_10:2026_10
+.PHONY: drift
+drift:
+	$(PYTHON_INTERPRETER) -m mibici.monitoring.drift --reference $(REFERENCE) --current $(CURRENT)
+
 ## Pruebas + seguridad + validación de datos
 .PHONY: check
 check: test security validate

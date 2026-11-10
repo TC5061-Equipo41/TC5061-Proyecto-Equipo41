@@ -1,0 +1,209 @@
+{
+  "referencia": {
+    "periodo": "2025_10:2026_09",
+    "dias": 365,
+    "viajes": 4497119,
+    "estaciones": 471
+  },
+  "actual": {
+    "periodo": "2026_10:2026_10",
+    "dias": 31,
+    "viajes": 635532,
+    "estaciones": 470
+  },
+  "viajes_muestreados_por_periodo": 200000,
+  "factor_escala_conteos": 11.7742,
+  "modelo": "/Users/pmarqueza/Desktop/Magister IA/Magister IA - 4to Bimestre 2026/INF3960 - Seminario Internacional/TC5061-Proyecto-Equipo41/models/p3_model",
+  "viajes": {
+    "variables": [
+      {
+        "variable": "destino_id",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.1317,
+        "umbral": 0.1,
+        "drift": true
+      },
+      {
+        "variable": "duracion_minutos",
+        "metodo": "Wasserstein distance (normed)",
+        "valor": 0.2169,
+        "umbral": 0.1,
+        "drift": true
+      },
+      {
+        "variable": "origen_id",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.1305,
+        "umbral": 0.1,
+        "drift": true
+      },
+      {
+        "variable": "dia_semana",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.0413,
+        "umbral": 0.1,
+        "drift": false
+      },
+      {
+        "variable": "fin_de_semana",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.0006,
+        "umbral": 0.1,
+        "drift": false
+      },
+      {
+        "variable": "hora",
+        "metodo": "Wasserstein distance (normed)",
+        "valor": 0.0211,
+        "umbral": 0.1,
+        "drift": false
+      },
+      {
+        "variable": "origen_en_catalogo",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.0126,
+        "umbral": 0.1,
+        "drift": false
+      },
+      {
+        "variable": "viaje_circular",
+        "metodo": "Jensen-Shannon distance",
+        "valor": 0.0131,
+        "umbral": 0.1,
+        "drift": false
+      }
+    ],
+    "resumen_evidently": {
+      "variables_con_drift": 3,
+      "proporcion": 0.375,
+      "umbral_dataset": 0.5,
+      "drift_del_dataset": false
+    }
+  },
+  "estaciones_p3": {
+    "variables": [
+      {
+        "variable": "duracion_promedio",
+        "metodo": "K-S p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "grupo_predicho",
+        "metodo": "Z-test p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "log_viajes_llegada",
+        "metodo": "K-S p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "log_viajes_salida",
+        "metodo": "K-S p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "salidas_noche_proporcion",
+        "metodo": "K-S p_value",
+        "valor": 0.0354,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "viajes_llegada",
+        "metodo": "K-S p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "viajes_salida",
+        "metodo": "K-S p_value",
+        "valor": 0.0,
+        "umbral": 0.05,
+        "drift": true
+      },
+      {
+        "variable": "salidas_fin_semana_proporcion",
+        "metodo": "K-S p_value",
+        "valor": 0.1485,
+        "umbral": 0.05,
+        "drift": false
+      },
+      {
+        "variable": "salidas_madrugada_proporcion",
+        "metodo": "K-S p_value",
+        "valor": 0.275,
+        "umbral": 0.05,
+        "drift": false
+      },
+      {
+        "variable": "salidas_manana_proporcion",
+        "metodo": "K-S p_value",
+        "valor": 0.0531,
+        "umbral": 0.05,
+        "drift": false
+      },
+      {
+        "variable": "salidas_tarde_proporcion",
+        "metodo": "K-S p_value",
+        "valor": 0.3674,
+        "umbral": 0.05,
+        "drift": false
+      }
+    ],
+    "resumen_evidently": {
+      "variables_con_drift": 7,
+      "proporcion": 0.6364,
+      "umbral_dataset": 0.5,
+      "drift_del_dataset": true
+    }
+  },
+  "predicciones_p3": {
+    "estaciones_en_ambos": 468,
+    "estaciones_que_cambian_de_grupo": 100,
+    "proporcion_que_cambia": 0.2137,
+    "estaciones_solo_en_referencia": 3,
+    "estaciones_solo_en_actual": 2,
+    "distribucion_grupos": {
+      "referencia": {
+        "0": 0.8301,
+        "1": 0.1699
+      },
+      "actual": {
+        "0": 0.617,
+        "1": 0.383
+      }
+    }
+  },
+  "calidad": {
+    "referencia": {
+      "viajes": 4497119,
+      "viajes_por_dia": 12320.9,
+      "origen_fuera_de_catalogo": 0.0004,
+      "destino_fuera_de_catalogo": 0.0005,
+      "duracion_cero": 0.0008,
+      "duracion_mayor_3h": 0.0001,
+      "duracion_p50": 9.35,
+      "duracion_p99": 33.43
+    },
+    "actual": {
+      "viajes": 635532,
+      "viajes_por_dia": 20501.0,
+      "origen_fuera_de_catalogo": 0.0,
+      "destino_fuera_de_catalogo": 0.0,
+      "duracion_cero": 0.0003,
+      "duracion_mayor_3h": 0.0001,
+      "duracion_p50": 8.03,
+      "duracion_p99": 29.83
+    }
+  }
+}
