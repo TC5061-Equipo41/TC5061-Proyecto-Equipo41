@@ -1,0 +1,30 @@
+python : 2026-11-14 11:57:02.265 | INFO     | mibici.config:<module>:12 - PROJ_ROOT path is: C:\Users\neflo\TC5061-Proyecto-Equipo41
+At line:2 char:1
++ python -m mibici.monitoring.p3_ab_test --champion-version 2 --challen ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-11-14 11:5...oyecto-Equipo41:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+
+=== A/B TESTING OFFLINE P3 ===
+Periodo: Octubre 2026
+Estaciones evaluadas: 470
+
+--- Modelo version 2 ---
+Silhouette: 0.4655721240016453
+Davies-Bouldin: 0.8239270760714866
+Distribucion de clusters:
+0    290
+1    180
+Name: count, dtype: int64
+
+--- Modelo version 3 ---
+Silhouette: 0.2807550472670452
+Davies-Bouldin: 0.9566353034337104
+Distribucion de clusters:
+0    323
+1     51
+2     96
+Name: count, dtype: int64
+
+Evaluacion finalizada.
