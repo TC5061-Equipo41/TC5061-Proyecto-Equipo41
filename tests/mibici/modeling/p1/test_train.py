@@ -89,10 +89,11 @@ def test_model_is_reproducible_with_seed(name, splits):
 
 
 @pytest.mark.parametrize("name", MODELS)
-def test_run_model_is_reproducible_with_seed(name, splits):
+def test_run_model_is_reproducible_with_seed(name, splits, monkeypatch):
+    monkeypatch.setattr(train, "TRAIN_CHALLENGER", False)
     params = train.get_models()[name]["base"]
     for _ in range(2):
-        train.run_model("v1", {"from": "2026-07", "to": "2026-08"}, name, params, splits)
+        train.run_model(None, "v1", {"from": "2026-07", "to": "2026-08"}, name, params, splits)
 
     runs = mlflow.search_runs(search_all_experiments=True)
     assert len(runs) == 2

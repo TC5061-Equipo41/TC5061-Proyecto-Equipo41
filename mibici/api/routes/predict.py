@@ -1,23 +1,15 @@
 from fastapi import APIRouter, HTTPException, Request
 import pandas as pd
 
+from mibici.api.ab_testing.p1_log import log_p1_prediction
+from mibici.api.ab_testing.random_chooser import choose_model
+from mibici.api.models.request.p1_prediction_request import P1PredictionRequest
 from mibici.api.models.request.p3_prediction_request import P3PredictionRequest
+from mibici.api.models.response.p1_prediction_response import P1PredictionResponse
 from mibici.api.models.response.p3_prediction_response import P3PredictionResponse
 from mibici.modeling.p3.train import prepare_features
 
 router = APIRouter(prefix="/predict", tags=["predict"])
-
-
-@router.get("/model-info")
-def model_info(request: Request):
-    state = request.app.state
-    model = getattr(state, "model", None)
-    return {
-        "model_name": state.model_name,
-        "model_version": state.model_version,
-        "model_uri": state.model_uri,
-        "model_inputs": model_input_names(model) if model is not None else [],
-    }
 
 
 def model_input_names(model) -> list[str]:
@@ -27,8 +19,8 @@ def model_input_names(model) -> list[str]:
 
 @router.post("/p3", response_model=P3PredictionResponse)
 def predict_p3(body: P3PredictionRequest, request: Request):
-    state = request.app.state
-    model = getattr(state, "model", None)
+    p3 = request.app.state.models["p3"]
+    model = p3.get("loaded")
     if model is None:
         raise HTTPException(
             status_code=503,
@@ -43,8 +35,8 @@ def predict_p3(body: P3PredictionRequest, request: Request):
 
         return P3PredictionResponse(
             grupo_predicho=int(prediction[0]),
-            modelo=state.model_name,
-            version=state.model_version,
+            modelo=p3["name"],
+            version=p3["version"],
         )
 
     except Exception as exc:
@@ -52,3 +44,21 @@ def predict_p3(body: P3PredictionRequest, request: Request):
             status_code=500,
             detail=f"Error al realizar la predicción: {exc}",
         ) from exc
+
+@router.post("/p1/abtest", response_model=P1PredictionResponse)
+def predict_p1_abtest(body: P1PredictionRequest, request: Request) -> P1PredictionResponse:
+    model = choose_model(request.app.state.models)
+
+    features = pd.DataFrame([{
+        "Origen_Id": body.origen_id,
+        "Hora": body.hora,
+        "Dia": body.dia,
+    }]).astype({"Hora": "int32"})  # la firma del modelo espera Hora como int32
+
+    prediction = max(0.0, float(model["loaded"].predict(features)[0]))
+
+
+    response = P1PredictionResponse(prediction=prediction, model=model["alias"])
+    log_p1_prediction(body, response)
+
+    return response
