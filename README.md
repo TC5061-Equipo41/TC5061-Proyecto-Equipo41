@@ -180,13 +180,13 @@ Todo se ejecuta desde la raíz del repositorio con el entorno del proyecto activ
 `pip install -r requirements.txt`). Las pruebas no usan los datos reales ni el servidor de
 MLflow: trabajan con datos sintéticos y un tracking temporal (`tests/conftest.py`).
 
-| Comando | Qué hace | Requiere |
-|---|---|---|
-| `make test` | PyTest: pruebas unitarias, reproducibilidad del entrenamiento e higiene del repo | Entorno del proyecto |
-| `make security` | bandit (código), pip-audit (dependencias) y detect-secrets (credenciales) | Entorno del proyecto + internet (pip-audit) |
-| `make validation-env` | Crea el entorno de validación (Python 3.12) en `~/.venvs/mibici-validation` | [uv](https://docs.astral.sh/uv/), una sola vez |
-| `make validate` | DeepChecks sobre los datos de P1, P2 y P3; reportes en `reports/validation/` | Datos en `data/raw/` + entorno de validación |
-| `make check` | Los tres anteriores en orden | Todo lo anterior |
+| Comando               | Qué hace                                                                         | Requiere                                       |
+| --------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `make test`           | PyTest: pruebas unitarias, reproducibilidad del entrenamiento e higiene del repo | Entorno del proyecto                           |
+| `make security`       | bandit (código), pip-audit (dependencias) y detect-secrets (credenciales)        | Entorno del proyecto + internet (pip-audit)    |
+| `make validation-env` | Crea el entorno de validación (Python 3.12) en `~/.venvs/mibici-validation`      | [uv](https://docs.astral.sh/uv/), una sola vez |
+| `make validate`       | DeepChecks sobre los datos de P1, P2 y P3; reportes en `reports/validation/`     | Datos en `data/raw/` + entorno de validación   |
+| `make check`          | Los tres anteriores en orden                                                     | Todo lo anterior                               |
 
 Sin `make`: `python -m pytest`; los comandos de seguridad y validación están en el `Makefile`.
 
@@ -236,42 +236,68 @@ make validate
 
 ### Seguridad
 
-| Chequeo | Herramienta | Resultado |
-|---|---|---|
-| Código | `bandit -c pyproject.toml -r mibici` | Sin hallazgos. Los 11 avisos previos (llamadas a `git` con `subprocess` en tres copias de la misma función) se corrigieron: una sola función en `tracking.py`, con ruta absoluta a `git` y argumentos fijos; las 2 supresiones `# nosec` restantes están justificadas en el código. |
-| Dependencias | `pip-audit -r requirements.txt` | Sin vulnerabilidades. Se encontró **CVE-2026-53995** (path traversal en FileStore) en mlflow 3.17.0 y se actualizó a 3.17.2. |
-| Dependencias de validación | `pip-audit` sobre `~/.venvs/mibici-validation` | 3 avisos en setuptools 80.9.0 (construcción de sdist y wheels legacy en Windows). **Riesgo aceptado**: DeepChecks necesita `pkg_resources`, que no existe en las versiones corregidas, y el entorno de validación no construye ni instala paquetes de terceros. |
-| Credenciales | `detect-secrets` con `.secrets.baseline` | Sin secretos. La línea base excluye por regla los falsos positivos: hashes SHA-256 del manifiesto, imágenes PNG embebidas en notebooks y reportes HTML de DeepChecks. |
-| Datos y variables de entorno | `.gitignore` + `.env.example` + `tests/test_repo_hygiene.py` | Datos de MiBici, `mlflow.db`, `mlartifacts/`, modelos y `.env` ignorados; ninguno aparece en el historial. Las variables locales van en `.env` (copiar desde `.env.example`). |
+| Chequeo                      | Herramienta                                                  | Resultado                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Código                       | `bandit -c pyproject.toml -r mibici`                         | Sin hallazgos. Los 11 avisos previos (llamadas a `git` con `subprocess` en tres copias de la misma función) se corrigieron: una sola función en `tracking.py`, con ruta absoluta a `git` y argumentos fijos; las 2 supresiones `# nosec` restantes están justificadas en el código. |
+| Dependencias                 | `pip-audit -r requirements.txt`                              | Sin vulnerabilidades. Se encontró **CVE-2026-53995** (path traversal en FileStore) en mlflow 3.17.0 y se actualizó a 3.17.2.                                                                                                                                                        |
+| Dependencias de validación   | `pip-audit` sobre `~/.venvs/mibici-validation`               | 3 avisos en setuptools 80.9.0 (construcción de sdist y wheels legacy en Windows). **Riesgo aceptado**: DeepChecks necesita `pkg_resources`, que no existe en las versiones corregidas, y el entorno de validación no construye ni instala paquetes de terceros.                     |
+| Credenciales                 | `detect-secrets` con `.secrets.baseline`                     | Sin secretos. La línea base excluye por regla los falsos positivos: hashes SHA-256 del manifiesto, imágenes PNG embebidas en notebooks y reportes HTML de DeepChecks.                                                                                                               |
+| Datos y variables de entorno | `.gitignore` + `.env.example` + `tests/test_repo_hygiene.py` | Datos de MiBici, `mlflow.db`, `mlartifacts/`, modelos y `.env` ignorados; ninguno aparece en el historial. Las variables locales van en `.env` (copiar desde `.env.example`).                                                                                                       |
 
 ### Evidencia
 
-| Ejecución | Captura |
-|---|---|
-| PyTest | ![PyTest](reports/Evidence/pytest_execution.png) |
-| DeepChecks | ![DeepChecks](reports/Evidence/deepchecks_execution.png) |
-| bandit | ![bandit](reports/Evidence/bandit_execution.png) |
-| pip-audit y detect-secrets | ![Seguridad](reports/Evidence/security_execution.png) |
-| Reproducibilidad | ![Reproducibilidad](reports/Evidence/reproducibility_execution.png) |
+| Ejecución                  | Captura                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| PyTest                     | ![PyTest](reports/Evidence/pytest_execution.png)                    |
+| DeepChecks                 | ![DeepChecks](reports/Evidence/deepchecks_execution.png)            |
+| bandit                     | ![bandit](reports/Evidence/bandit_execution.png)                    |
+| pip-audit y detect-secrets | ![Seguridad](reports/Evidence/security_execution.png)               |
+| Reproducibilidad           | ![Reproducibilidad](reports/Evidence/reproducibility_execution.png) |
 
 Reportes generados: `reports/security-scan/bandit.html` y `reports/validation/*.html`.
 
 ## Correr FastAPI con Docker
 
-La API sirve el modelo de **P3** (grupos de estaciones). El modelo se toma del Model Registry de
-MLflow por nombre y alias (`mibici-equipo41-p3-grupos@champion`) y **se empaqueta en la imagen**:
-`export_model.py` descarga del registry la versión que tiene el alias (`MLmodel`, `model.skops`,
-firma de entrada) a `models/p3_model/` y anota su número en `models/p3_model/VERSION`. Así el
-contenedor no necesita un servidor de MLflow para arrancar, y la imagen queda atada a una versión
-concreta del modelo.
+La API sirve los modelos de **P3** (grupos de estaciones) y **P1** (demanda de viajes por
+estación y hora). Los modelos se toman del Model Registry de MLflow por nombre y alias, según las
+variables de entorno de la tabla siguiente, y se cargan al arrancar la API.
 
-**Precondición**: el modelo de P3 debe estar entrenado y registrado. Si no lo está:
-`mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3`.
+**Precondición**: los modelos deben estar entrenados y registrados. Si no lo están:
+
+```bash
+mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3
+mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p1 -P model=random_forest -P ... (model params)
+```
+
+### Variables de entorno
+
+La API las lee de `.env` (con `python-dotenv`) o del entorno del proceso. Cada modelo se define
+con su nombre en el registry, su alias y la URI desde donde se carga.
+
+| Variable              | Ejemplo                                         | Uso                                                |
+| --------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| `MLFLOW_TRACKING_URI` | `http://127.0.0.1:5000`                         | Servidor de MLflow con el Model Registry           |
+| `P3_MODEL_NAME`       | `mibici-equipo41-p3-grupos`                     | Modelo registrado de P3                            |
+| `P3_MODEL_ALIAS`      | `champion`                                      | Alias de la versión de P3 que se sirve             |
+| `P3_MODEL_URI`        | `models:/mibici-equipo41-p3-grupos@champion`    | URI desde donde se carga P3                        |
+| `P1_CURRENT_MODEL`    | `mibici-equipo41-p1-demanda`                    | Modelo registrado de P1 (versión actual)           |
+| `P1_CURRENT_ALIAS`    | `champion`                                      | Alias de la versión actual de P1                   |
+| `P1_CURRENT_URI`      | `models:/mibici-equipo41-p1-demanda@champion`   | URI desde donde se carga la versión actual de P1   |
+| `P1_CHALLENGER_MODEL` | `mibici-equipo41-p1-demanda`                    | Modelo registrado de P1 (versión retadora)         |
+| `P1_CHALLENGER_ALIAS` | `challenger`                                    | Alias de la versión retadora de P1                 |
+| `P1_CHALLENGER_URI`   | `models:/mibici-equipo41-p1-demanda@challenger` | URI desde donde se carga la versión retadora de P1 |
+
+Para correr la API localmente, copia estas variables a `.env` (están en `.env.example`) y la
+versión que reporta cada respuesta se consulta en el registry a partir del nombre y el alias, así
+que la URI debe apuntar al mismo nombre y alias. En Docker no se usa `.env`: el `Dockerfile` define
+las variables y apunta las URIs a los modelos exportados en la imagen, cuya versión se lee del
+archivo `VERSION` de cada carpeta.
 
 **Pasos** (desde la raíz del repositorio, con Docker Desktop abierto):
 
 1. Levanta MLflow: `mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000`
-2. En otra terminal, descarga el modelo campeón del registry:
+2. En otra terminal, descarga los modelos del registry a `models/p3_model/`, `models/p1_current/`
+   y `models/p1_challenger/`:
    ```bash
    export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
    python -m mibici.api.scripts.export_model
@@ -280,11 +306,13 @@ concreta del modelo.
 4. Levanta el contenedor: `docker run --rm --name mibici-api -p 8000:8000 mibici-api`
 5. Prueba la API desde otra terminal (o en `http://localhost:8000/docs`):
 
-| Endpoint | Qué devuelve |
-|---|---|
-| `GET /health` | Estado del servicio y si el modelo quedó cargado |
-| `GET /predict/model-info` | Nombre, versión y alias del modelo, y las columnas de su firma |
-| `POST /predict/p3` | Grupo predicho para una estación |
+| Endpoint                  | Qué devuelve                                                |
+| ------------------------- | ----------------------------------------------------------- |
+| `GET /health`             | Estado del servicio                                         |
+| `POST /predict/p3`        | Grupo predicho para una estación                            |
+| `POST /predict/p1/abtest` | Viajes predichos para una estación, hora y día de la semana |
+
+### `POST /predict/p3`
 
 **Entrada.** La petición trae el uso agregado de una estación, con el mismo esquema que
 `data/processed/p3_station_features.csv`. La API calcula las variables del modelo
@@ -301,7 +329,7 @@ curl -X POST http://localhost:8000/predict/p3 \
 ```
 
 ```json
-{"grupo_predicho": 0, "modelo": "mibici-equipo41-p3-grupos", "version": "1 (champion)"}
+{ "grupo_predicho": 0, "modelo": "mibici-equipo41-p3-grupos", "version": "2" }
 ```
 
 El número de grupo y la versión dependen del modelo registrado en cada equipo.
@@ -312,23 +340,67 @@ semana no pueden superar `viajes_salida`; no se aceptan campos extra. Una entrad
 responde `422` con el campo y el motivo, por ejemplo:
 
 ```json
-{"detail": [{"type": "greater_than_equal", "loc": ["body", "viajes_salida"],
-             "msg": "Input should be greater than or equal to 0", "input": -5, "ctx": {"ge": 0}}]}
+{
+  "detail": [
+    {
+      "type": "greater_than_equal",
+      "loc": ["body", "viajes_salida"],
+      "msg": "Input should be greater than or equal to 0",
+      "input": -5,
+      "ctx": { "ge": 0 }
+    }
+  ]
+}
 ```
+
+### `POST /predict/p1/abtest`
+
+**Entrada.** Estación, hora y día de la semana para los que se quiere estimar el número de viajes
+que inician, más los viajes reales observados.
+
+| Campo       | Tipo   | Descripción                                        |
+| ----------- | ------ | -------------------------------------------------- |
+| `origen_id` | entero | Identificador de la estación de origen             |
+| `hora`      | entero | Hora del día (0 a 23)                              |
+| `dia`       | texto  | Día de la semana en inglés: `Monday` … `Sunday`    |
+| `y`         | número | Viajes reales que iniciaron en esa estación y hora |
+
+```bash
+curl -X POST http://localhost:8000/predict/p1/abtest \
+  -H "Content-Type: application/json" \
+  -d '{"origen_id": 272, "hora": 8, "dia": "Monday", "y": 7}'
+```
+
+**Salida.** `prediction` es el número de viajes estimado (nunca negativo) y `model` el alias del
+modelo de P1 que respondió.
+
+```json
+{ "prediction": 6.76, "model": "champion" }
+```
+
+Todos los campos son obligatorios; una entrada con tipos inválidos responde `422`.
 
 ### Estrategia de despliegue y reproducibilidad
 
-Para el modelo P3 de MiBici se seleccionó una estrategia de **inferencia bajo demanda** mediante una API REST desarrollada con FastAPI. El servicio recibe características agregadas de los viajes de una estación y devuelve su grupo estimado, sin volver a entrenar el modelo en cada petición.
+Para los modelos P3 y P1 de MiBici se seleccionó una estrategia de **inferencia bajo demanda** mediante una API REST desarrollada con FastAPI. Para P3, el servicio recibe características agregadas de los viajes de una estación y devuelve su grupo estimado; para P1, recibe una estación, una hora y un día de la semana y devuelve los viajes estimados. En ningún caso se vuelve a entrenar el modelo en cada petición.
 
 Esta modalidad facilita integrar el agrupamiento con aplicaciones externas mediante HTTP. La predicción se obtiene cuando un cliente consulta el servicio, pero esto **no significa que los datos de viajes se reciban en tiempo real**: las entradas corresponden a métricas agregadas previamente. Por ello, el servicio es adecuado para consultas puntuales; si se necesitara clasificar periódicamente un gran número de estaciones, podría incorporarse un proceso adicional de inferencia por lotes.
 
-Se eligió **empaquetar una copia del modelo en la imagen**, en lugar de conectarse al Model Registry durante cada arranque. Antes de construir el contenedor, `python -m mibici.api.scripts.export_model` recupera del registro MLflow el modelo `mibici-equipo41-p3-grupos` con alias `champion` y lo guarda en `models/p3_model/`, junto con su firma y el archivo `VERSION`. Esto evita que la API requiera un servidor MLflow disponible durante la inferencia.
+Se eligió **empaquetar una copia de los modelos en la imagen**, en lugar de conectarse al Model Registry durante cada arranque. Antes de construir el contenedor, `python -m mibici.api.scripts.export_model` recupera del registro MLflow tres modelos, cada uno con su firma y un archivo `VERSION`:
 
-El contenedor reúne la aplicación, el modelo exportado y las dependencias necesarias, lo que favorece la **portabilidad y la reproducibilidad del despliegue**. El archivo `models/p3_model/VERSION` permite identificar la versión utilizada. Si cambia el alias `champion`, se debe **volver a exportar el modelo y reconstruir la imagen** para publicar el cambio; el contenedor en ejecución no actualiza el modelo automáticamente.
+| Modelo registrado | Alias | Carpeta |
+|---|---|---|
+| `mibici-equipo41-p3-grupos` | `champion` | `models/p3_model/` |
+| `mibici-equipo41-p1-demanda` | `champion` | `models/p1_current/` |
+| `mibici-equipo41-p1-demanda` | `challenger` | `models/p1_challenger/` |
+
+Esto evita que la API requiera un servidor MLflow disponible durante la inferencia.
+
+El contenedor reúne la aplicación, los modelos exportados y las dependencias necesarias, lo que favorece la **portabilidad y la reproducibilidad del despliegue**. El archivo `VERSION` de cada carpeta permite identificar la versión utilizada. Si cambia el alias `champion` o `challenger`, se debe **volver a exportar los modelos y reconstruir la imagen** para publicar el cambio; el contenedor en ejecución no actualiza los modelos automáticamente.
 
 ### Ejecución y consumo desde Windows PowerShell
 
-Esta alternativa complementa los comandos Bash anteriores. Desde la raíz del repositorio, con el entorno Python activado y **Docker Desktop iniciado**, usa las siguientes instrucciones. Se supone que el modelo P3 ya está entrenado y registrado en el MLflow local.
+Esta alternativa complementa los comandos Bash anteriores. Desde la raíz del repositorio, con el entorno Python activado y **Docker Desktop iniciado**, usa las siguientes instrucciones. Se supone que los modelos P3 y P1 ya están entrenados y registrados en el MLflow local.
 
 **1. Iniciar MLflow** (mantén abierta esta terminal):
 
@@ -336,7 +408,7 @@ Esta alternativa complementa los comandos Bash anteriores. Desde la raíz del re
 mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000
 ```
 
-**2. Exportar el modelo campeón** (en una segunda terminal):
+**2. Exportar los modelos** (en una segunda terminal):
 
 ```powershell
 $env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
@@ -359,7 +431,6 @@ docker run --rm --name mibici-api -p 8000:8000 mibici-api
 
 ```powershell
 Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get
-Invoke-RestMethod -Uri "http://localhost:8000/predict/model-info" -Method Get
 ```
 
 **6. Consultar el grupo de una estación:**
@@ -382,15 +453,36 @@ Invoke-RestMethod -Uri "http://localhost:8000/predict/p3" `
     -Body $body
 ```
 
-La petición utiliza los mismos valores de ejemplo del apartado anterior. La respuesta incluye `grupo_predicho`, `modelo` y `version`; el grupo y la versión dependen del modelo campeón empaquetado. También está disponible la interfaz interactiva de FastAPI en <http://localhost:8000/docs> mientras el contenedor está activo.
+La petición utiliza los mismos valores de ejemplo del apartado anterior. La respuesta incluye `grupo_predicho`, `modelo` y `version`; el grupo y la versión dependen del modelo campeón empaquetado.
+
+**7. Estimar los viajes de una estación:**
+
+```powershell
+$body = @{
+    origen_id = 272
+    hora = 8
+    dia = "Monday"
+    y = 7
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/predict/p1/abtest" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+```
+
+La respuesta incluye `prediction` (viajes estimados) y `model` (alias del modelo de P1 que respondió). También está disponible la interfaz interactiva de FastAPI en <http://localhost:8000/docs> mientras el contenedor está activo.
 
 ### Evidencia del contenedor
 
-| Paso | Captura |
-|---|---|
-| `docker build` | ![docker build](reports/Evidence/docker_build.png) |
-| `docker run` | ![docker run](reports/Evidence/docker_run.png) |
-| Peticiones a la API | ![API](reports/Evidence/api_requests.png) |
+> Las capturas corresponden a la versión anterior de la API (solo P3); hay que actualizarlas con la
+> imagen que incluye P1.
+
+| Paso                | Captura                                            |
+| ------------------- | -------------------------------------------------- |
+| `docker build`      | ![docker build](reports/Evidence/docker_build.png) |
+| `docker run`        | ![docker run](reports/Evidence/docker_run.png)     |
+| Peticiones a la API | ![API](reports/Evidence/api_requests.png)          |
 
 ## Monitoreo de drift (Evidently)
 
@@ -400,11 +492,11 @@ monitorea el modelo **P3** que sirve la API (`mibici-equipo41-p3-grupos`, versi�
 
 ### 1. Conjuntos de datos
 
-| Conjunto | Periodo | Viajes | Por qué |
-|---|---|---|---|
-| **Referencia** | octubre 2025 – septiembre 2026 | 4.497.119 | Es exactamente el periodo con que se entrenó el campeón de P3 (`data_version` `v1.0-cec7eeaf7d56`) |
-| **Actual** | octubre 2026 | 635.532 | Primer mes publicado por MiBici **después** del entrenamiento: es lo que el modelo recibe en producción |
-| Control estacional | octubre 2025 vs octubre 2026 | 420.064 vs 635.532 | Mismo mes un año antes, para separar temporada de cambio real |
+| Conjunto           | Periodo                        | Viajes             | Por qué                                                                                                 |
+| ------------------ | ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| **Referencia**     | octubre 2025 – septiembre 2026 | 4.497.119          | Es exactamente el periodo con que se entrenó el campeón de P3 (`data_version` `v1.0-cec7eeaf7d56`)      |
+| **Actual**         | octubre 2026                   | 635.532            | Primer mes publicado por MiBici **después** del entrenamiento: es lo que el modelo recibe en producción |
+| Control estacional | octubre 2025 vs octubre 2026   | 420.064 vs 635.532 | Mismo mes un año antes, para separar temporada de cambio real                                           |
 
 La API de P3 no registra las peticiones que recibe, así que la producción se representa con el mes
 siguiente de los datos abiertos. Ambos conjuntos pasan por el mismo pipeline del proyecto
@@ -428,11 +520,11 @@ make drift REFERENCE=2025_10:2025_10 CURRENT=2026_10:2026_10   # control estacio
 Genera en `reports/drift/` dos reportes de Evidently 0.7 (`DataDriftPreset` y `DataSummaryPreset`)
 y un resumen:
 
-| Archivo | Contenido |
-|---|---|
-| [`trips_drift.html`](reports/drift/trips_drift.html) | Drift por variable y calidad de los datos a nivel de viaje |
-| [`p3_stations_drift.html`](reports/drift/p3_stations_drift.html) | Drift por variable de la entrada del modelo P3 y de sus predicciones |
-| [`drift_summary.json`](reports/drift/drift_summary.json) | Tabla por variable, cambio de grupo por estación e indicadores de calidad |
+| Archivo                                                          | Contenido                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [`trips_drift.html`](reports/drift/trips_drift.html)             | Drift por variable y calidad de los datos a nivel de viaje                |
+| [`p3_stations_drift.html`](reports/drift/p3_stations_drift.html) | Drift por variable de la entrada del modelo P3 y de sus predicciones      |
+| [`drift_summary.json`](reports/drift/drift_summary.json)         | Tabla por variable, cambio de grupo por estación e indicadores de calidad |
 
 Evidently elige la prueba según el tamaño y el tipo de variable. Con más de 1.000 filas (viajes)
 usa distancias: Wasserstein normalizada para numéricas y Jensen-Shannon para categóricas, con drift
@@ -442,29 +534,29 @@ reproducible: dos corridas dan exactamente los mismos valores.
 
 **Viajes · 3 de 8 variables con drift**
 
-| Variable | Prueba | Valor | Drift | Control oct-25 vs oct-26 |
-|---|---|---|---|---|
-| `duracion_minutos` | Wasserstein | 0,217 | **Sí** | 0,246 · Sí |
-| `destino_id` | Jensen-Shannon | 0,132 | **Sí** | 0,198 · Sí |
-| `origen_id` | Jensen-Shannon | 0,131 | **Sí** | 0,200 · Sí |
-| `dia_semana` | Jensen-Shannon | 0,041 | No | 0,048 · No |
-| `hora` | Wasserstein | 0,021 | No | 0,035 · No |
-| `viaje_circular` | Jensen-Shannon | 0,013 | No | 0,027 · No |
-| `origen_en_catalogo` | Jensen-Shannon | 0,013 | No | 0,000 · No |
-| `fin_de_semana` | Jensen-Shannon | 0,001 | No | 0,033 · No |
+| Variable             | Prueba         | Valor | Drift  | Control oct-25 vs oct-26 |
+| -------------------- | -------------- | ----- | ------ | ------------------------ |
+| `duracion_minutos`   | Wasserstein    | 0,217 | **Sí** | 0,246 · Sí               |
+| `destino_id`         | Jensen-Shannon | 0,132 | **Sí** | 0,198 · Sí               |
+| `origen_id`          | Jensen-Shannon | 0,131 | **Sí** | 0,200 · Sí               |
+| `dia_semana`         | Jensen-Shannon | 0,041 | No     | 0,048 · No               |
+| `hora`               | Wasserstein    | 0,021 | No     | 0,035 · No               |
+| `viaje_circular`     | Jensen-Shannon | 0,013 | No     | 0,027 · No               |
+| `origen_en_catalogo` | Jensen-Shannon | 0,013 | No     | 0,000 · No               |
+| `fin_de_semana`      | Jensen-Shannon | 0,001 | No     | 0,033 · No               |
 
 **Estaciones (entrada de P3) · 7 de 11 variables con drift**
 
-| Variable | p-valor K-S / Z | Drift |
-|---|---|---|
-| `viajes_salida`, `viajes_llegada` (y sus logaritmos) | < 0,001 | **Sí** |
-| `duracion_promedio` | < 0,001 | **Sí** |
-| `grupo_predicho` | < 0,001 | **Sí** |
-| `salidas_noche_proporcion` | 0,035 | **Sí** (límite) |
-| `salidas_manana_proporcion` | 0,053 | No (límite) |
-| `salidas_fin_semana_proporcion` | 0,149 | No |
-| `salidas_madrugada_proporcion` | 0,275 | No |
-| `salidas_tarde_proporcion` | 0,367 | No |
+| Variable                                             | p-valor K-S / Z | Drift           |
+| ---------------------------------------------------- | --------------- | --------------- |
+| `viajes_salida`, `viajes_llegada` (y sus logaritmos) | < 0,001         | **Sí**          |
+| `duracion_promedio`                                  | < 0,001         | **Sí**          |
+| `grupo_predicho`                                     | < 0,001         | **Sí**          |
+| `salidas_noche_proporcion`                           | 0,035           | **Sí** (límite) |
+| `salidas_manana_proporcion`                          | 0,053           | No (límite)     |
+| `salidas_fin_semana_proporcion`                      | 0,149           | No              |
+| `salidas_madrugada_proporcion`                       | 0,275           | No              |
+| `salidas_tarde_proporcion`                           | 0,367           | No              |
 
 **Calidad de los datos**: buena en ambos periodos y mejor en octubre. Las estaciones fuera del
 catálogo pasan de 0,04 % a 0 %, los viajes de duración cero de 0,08 % a 0,03 %, y los de más de 3
@@ -475,11 +567,11 @@ los descarta, y no aparecen fechas fuera del periodo.
 
 **El sistema creció, pero se usa en los mismos horarios.**
 
-| Indicador | Referencia | Octubre 2025 | Octubre 2026 |
-|---|---|---|---|
-| Viajes por día | 12.321 | 13.551 | **20.501** (+66 % vs referencia, +51 % vs oct-25) |
-| Estaciones con viajes | 471 | 367 | 470 (+103 desde oct-25) |
-| Duración mediana / p99 | 9,4 / 33,4 min | 9,7 / 31,7 min | **8,0 / 29,8 min** |
+| Indicador              | Referencia     | Octubre 2025   | Octubre 2026                                      |
+| ---------------------- | -------------- | -------------- | ------------------------------------------------- |
+| Viajes por día         | 12.321         | 13.551         | **20.501** (+66 % vs referencia, +51 % vs oct-25) |
+| Estaciones con viajes  | 471            | 367            | 470 (+103 desde oct-25)                           |
+| Duración mediana / p99 | 9,4 / 33,4 min | 9,7 / 31,7 min | **8,0 / 29,8 min**                                |
 
 - **Hay drift significativo en cuánto se usa cada estación y cuánto duran los viajes.** El reparto
   de viajes entre estaciones (`origen_id`, `destino_id`) y la duración cambian, y el cambio es
@@ -515,11 +607,11 @@ modelo, entrenado con totales anuales, asigna todas las estaciones al grupo de b
 
 ### Evidencia
 
-| Paso | Captura |
-|---|---|
-| `make drift` en la Terminal | ![drift terminal](reports/Evidence/drift_terminal.png) |
-| Reporte de viajes (Evidently) | ![drift viajes](reports/Evidence/drift_trips.png) |
-| Reporte de estaciones / P3 (Evidently) | ![drift P3](reports/Evidence/drift_p3.png) |
+| Paso                                   | Captura                                                |
+| -------------------------------------- | ------------------------------------------------------ |
+| `make drift` en la Terminal            | ![drift terminal](reports/Evidence/drift_terminal.png) |
+| Reporte de viajes (Evidently)          | ![drift viajes](reports/Evidence/drift_trips.png)      |
+| Reporte de estaciones / P3 (Evidently) | ![drift P3](reports/Evidence/drift_p3.png)             |
 
 ## P3. Agrupamiento de estaciones por patrones de uso
 
@@ -545,7 +637,7 @@ Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el
 
 ### Modelo y evaluación
 
-Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (*_silhouette score_*), con el objetivo de comparar la separación y cohesión de los grupos.
+Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_*silhouette score*_), con el objetivo de comparar la separación y cohesión de los grupos.
 
 El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
 

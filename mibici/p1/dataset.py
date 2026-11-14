@@ -33,9 +33,12 @@ def create_p1_dataset(data: pd.DataFrame) -> pd.DataFrame :
     return p1_df
 
 
-def get_train_test_split(df: pd.DataFrame):
-    TRAIN_END = pd.Timestamp("2026-08-01")
-    TEST_END = pd.Timestamp("2026-09-01")
+def get_train_test_split(
+    df: pd.DataFrame, train_end="2026-08-01", test_end="2026-09-01", test_start=None
+):
+    TRAIN_END = pd.Timestamp(train_end)
+    TEST_START = pd.Timestamp(test_start or train_end)
+    TEST_END = pd.Timestamp(test_end)
 
     FEATURES = ["Origen_Id", "Hora", "Dia"]
 
@@ -43,7 +46,7 @@ def get_train_test_split(df: pd.DataFrame):
 
 
     train = df[df["Fecha"] < TRAIN_END]
-    test = df[(df["Fecha"] >= TRAIN_END) & (df["Fecha"] < TEST_END)] 
+    test = df[(df["Fecha"] >= TEST_START) & (df["Fecha"] < TEST_END)]
 
 
     X_train, y_train = train[FEATURES], train[TARGET]
