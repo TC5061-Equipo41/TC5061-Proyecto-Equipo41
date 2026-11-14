@@ -2,44 +2,61 @@ from contextlib import asynccontextmanager
 import os
 from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 import mlflow
 
 from mibici.api.routes import health_check, predict
 
-MODEL_NAME = os.getenv("MODEL_NAME", "mibici-equipo41-p3-grupos")
-MODEL_VERSION = os.getenv("MODEL_VERSION", "champion")
+load_dotenv()
 
-# Modelo del Model Registry (nombre + alias). La ubicación del registry la toma MLflow
-# de la variable de entorno MLFLOW_TRACKING_URI.
-MODEL_URI = os.getenv("MODEL_URI", f"models:/{MODEL_NAME}@champion")
+P3_MODEL_NAME = os.getenv("P3_MODEL_NAME")
+P3_MODEL_ALIAS = os.getenv("P3_MODEL_ALIAS")
+P3_MODEL_URI = os.getenv("P3_MODEL_URI")
+
+P1_CURRENT_MODEL = os.getenv("P1_CURRENT_MODEL")
+P1_CURRENT_ALIAS = os.getenv("P1_CURRENT_ALIAS")
+P1_CURRENT_URI = os.getenv("P1_CURRENT_URI")
+
+P1_CHALLENGER_MODEL = os.getenv("P1_CHALLENGER_MODEL")
+P1_CHALLENGER_ALIAS = os.getenv("P1_CHALLENGER_ALIAS")
+P1_CHALLENGER_URI = os.getenv("P1_CHALLENGER_URI")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.model_name = MODEL_NAME
-    app.state.model_uri = MODEL_URI
-    # export_model.py anota en VERSION la versión del registry que tenía el alias; si el modelo
-    # viene empaquetado en la imagen, se informa ese número junto al alias.
-    version_file = Path(MODEL_URI) / "VERSION"
-    app.state.model_version = (
-        f"{version_file.read_text().strip()} ({MODEL_VERSION})"
-        if version_file.is_file()
-        else MODEL_VERSION
-    )
-
-    try:
-        app.state.model = mlflow.pyfunc.load_model(MODEL_URI)
-    except Exception as exc:
-        raise RuntimeError(
-            f"No fue posible cargar el modelo {MODEL_URI}: {exc}"
-        ) from exc
-
+    load_models()
     yield
 
 
+def model_version(name: str, alias: str, uri: str) -> str:
+    """Modelo exportado (Docker): archivo VERSION de export_model.py; si no, el registry."""
+    version_file = Path(uri) / "VERSION"
+    if version_file.is_file():
+        return version_file.read_text().strip()
+    return str(mlflow.MlflowClient().get_model_version_by_alias(name, alias).version)
+
+
+def load_model(name: str, alias: str, uri: str) -> dict:
+    return {
+        "name": name,
+        "alias": alias,
+        "uri": uri,
+        "loaded": mlflow.pyfunc.load_model(uri),
+        "version": model_version(name, alias, uri),
+    }
+
+
+def load_models():
+    app.state.models = {
+        "p3": load_model(P3_MODEL_NAME, P3_MODEL_ALIAS, P3_MODEL_URI),
+        "p1_current": load_model(P1_CURRENT_MODEL, P1_CURRENT_ALIAS, P1_CURRENT_URI),
+        "p1_challenger": load_model(P1_CHALLENGER_MODEL, P1_CHALLENGER_ALIAS, P1_CHALLENGER_URI),
+    }
+
+        
 app = FastAPI(
     title="MiBici API",
-    description="API para predecir grupos de estaciones MiBici.",
+    description="API para predecir grupos de estaciones (P3) y viajes por estación y hora (P1) de MiBici.",
     version="1.0.0",
     lifespan=lifespan,
 )

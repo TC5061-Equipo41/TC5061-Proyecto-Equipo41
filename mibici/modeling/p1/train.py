@@ -10,6 +10,8 @@ from sklearn.model_selection import GridSearchCV, TimeSeriesSplit
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
 
+from mibici.config import STATIONS_DATA
+from mibici.dataset import build_initial_dataset
 from mibici.modeling.p1.evaluate import log_metrics
 from mibici.p1.dataset import create_p1_dataset, get_train_test_split
 from mibici.p1.plots import plot_prediction_vs_real_data
@@ -19,6 +21,7 @@ RUN_GRID = False
 SEED = 42
 REGISTERED_MODEL_NAME = "mibici-equipo41-p1-demanda"
 CHAMPION_ALIAS = "champion"
+TRAIN_CHALLENGER = True
 
 def train_p1_model(original_data: pd.DataFrame, data_version: str, date_range: dict, model: str = 'all', params: dict | None = None):
     validate_model_and_params(model, params)
@@ -33,15 +36,33 @@ def train_p1_model(original_data: pd.DataFrame, data_version: str, date_range: d
             run_model_comparison(data_version, date_range, splits)
 
     else:
-        run_model(data_version, date_range, model, params, splits)
+        run_model(original_data, data_version, date_range, model, params, splits)
 
-def run_model(data_version, date_range, model, params, splits):
-    models = get_models()
+def run_model(original_data, data_version, date_range, model, params, splits):
+    if not TRAIN_CHALLENGER:
+        train_and_register(model, params, splits, "current", CHAMPION_ALIAS, data_version, date_range)
+        return
 
-    model_pipeline = models[model]["pipeline"](params)
-    with mlflow.start_run(run_name=f"p1_model_{model}"):
-        mlflow.set_tags({"data_version": data_version, "date_range": date_range })
-        train_and_test_model(model, params, model_pipeline, splits)
+    # Prueba A/B: champion entrena hasta agosto, challenger hasta septiembre; ambos se evalúan
+    # en octubre 2026, el mes de la prueba A/B.
+    october = build_initial_dataset({"monthly": ["datos_abiertos_2026_10.csv"], "stations": STATIONS_DATA})
+    dataset = create_p1_dataset(pd.concat([original_data, october], ignore_index=True))
+
+    champion = get_train_test_split(dataset, "2026-09-01", "2026-11-01", test_start="2026-10-01")
+    challenger = get_train_test_split(dataset, "2026-10-01", "2026-11-01")
+
+    train_and_register(model, params, champion, "champion", CHAMPION_ALIAS,
+                       data_version, {**date_range, "to": "2026_08"})
+    train_and_register(model, params, challenger, "challenger", "challenger",
+                       data_version, {**date_range, "to": "2026_09"})
+
+
+def train_and_register(model, params, splits, label, alias, data_version, date_range):
+    pipeline = get_models()[model]["pipeline"](params)
+    with mlflow.start_run(run_name=f"p1_model_{model}_{label}") as run:
+        mlflow.set_tags({"data_version": data_version, "date_range": date_range})
+        train_and_test_model(model, params, pipeline, splits)
+    register_model(model, run.info.run_id, pipeline, splits, alias)
 
 
 def validate_model_and_params(model: str, params: dict | None):
@@ -109,6 +130,11 @@ def run_model_comparison(data_version, date_range, splits):
 
 
 def register_champion(name, run_id, model, splits):
+    version = register_model(name, run_id, model, splits, CHAMPION_ALIAS)
+    mlflow.set_tags({"champion_model": name, "champion_version": version})
+
+
+def register_model(name, run_id, model, splits, alias):
     _, _, X_test, _ = splits
     with mlflow.start_run(run_id=run_id, nested=True):
         info = mlflow.sklearn.log_model(
@@ -116,14 +142,15 @@ def register_champion(name, run_id, model, splits):
             name="p1_model",
             input_example=X_test.head(5),
             registered_model_name=REGISTERED_MODEL_NAME,
-            skops_trusted_types=['sklearn.tree._tree.Tree']
+            skops_trusted_types=[
+                'sklearn.tree._tree.Tree',
+                'sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor',
+            ]
         )
     version = info.registered_model_version
-    MlflowClient().set_registered_model_alias(REGISTERED_MODEL_NAME, CHAMPION_ALIAS, version)
-    mlflow.set_tags({"champion_model": name, "champion_version": version})
-    logger.success(
-        f"P1: {name} registrado como {REGISTERED_MODEL_NAME} v{version} @{CHAMPION_ALIAS}"
-    )
+    MlflowClient().set_registered_model_alias(REGISTERED_MODEL_NAME, alias, version)
+    logger.success(f"P1: {name} registrado como {REGISTERED_MODEL_NAME} v{version} @{alias}")
+    return version
 
         
 def tune_model(name, spec, splits):
