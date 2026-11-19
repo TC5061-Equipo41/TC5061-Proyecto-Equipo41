@@ -13,7 +13,11 @@ MODEL_VERSION = "3"
 
 # Mantener el mismo tracking URI local utilizado para entrenar el modelo.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-TRACKING_URI = f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
+
+TRACKING_URI = os.getenv(
+    "MLFLOW_TRACKING_URI",
+    f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
+)
 
 mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_registry_uri(TRACKING_URI)

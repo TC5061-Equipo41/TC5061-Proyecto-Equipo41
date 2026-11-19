@@ -202,7 +202,118 @@ python -m bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/ba
 
 Resultado: análisis de seguridad completado y reporte HTML generado.
 ![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
+## Actividad 9. Despliegue de servicios con Docker Compose
 
+### Objetivo
+
+Orquestar los servicios de la API de predicción de MiBici y el servidor MLflow mediante Docker Compose, permitiendo construir y ejecutar ambos servicios de manera conjunta y reproducible.
+
+### Arquitectura de despliegue
+
+La solución está compuesta por dos servicios:
+
+| Servicio | Descripción | Puerto |
+|---|---|---|
+| `mlflow` | Servidor de seguimiento de experimentos y Model Registry. Utiliza SQLite como backend y almacena los artefactos del modelo. | 5000 |
+| `api` | API desarrollada con FastAPI y Uvicorn para consultar el modelo P3 y generar predicciones. | 8000 |
+
+La API se comunica con MLflow mediante la dirección interna `http://mlflow:5000`, utilizando la red creada automáticamente por Docker Compose.
+
+### Archivos de configuración
+
+- `Dockerfile`: construye la imagen de la API utilizando Python 3.14, instala las dependencias del proyecto y ejecuta la aplicación mediante Uvicorn.
+- `Dockerfile.mlflow`: construye la imagen del servidor MLflow utilizando Python 3.14 e instala MLflow 3.17.0.
+- `docker-compose.yml`: define los dos servicios, sus puertos, dependencias, variables de entorno y volúmenes persistentes.
+
+Los volúmenes permiten conservar la base de datos `mlflow-docker.db` y los artefactos almacenados en `mlruns` fuera del ciclo de vida de los contenedores.
+
+### Requisitos previos
+
+- Docker Desktop instalado y en ejecución.
+- Docker Compose disponible mediante el comando `docker compose`.
+- Repositorio MiBici descargado localmente.
+
+### Construcción e inicio de los servicios
+
+Desde la raíz del repositorio, ejecutar:
+
+```bash
+docker compose up --build -d
+```
+
+Este comando construye las imágenes y levanta los servicios en segundo plano.
+
+Para verificar que ambos contenedores estén ejecutándose:
+
+```bash
+docker compose ps
+```
+
+### Acceso a los servicios
+
+Una vez iniciados los contenedores, se puede acceder a los siguientes recursos:
+
+| Recurso | Dirección |
+|---|---|
+| Interfaz de MLflow | http://localhost:5000 |
+| Documentación interactiva de la API (Swagger) | http://localhost:8000/docs |
+| Health Check de la API | http://localhost:8000/health |
+| Información del modelo cargado | http://localhost:8000/model-info |
+
+El endpoint `/health` permite verificar el estado de la API y confirmar si el modelo está cargado correctamente.
+
+El endpoint `/model-info` permite consultar el nombre del modelo, su versión y la dirección del servidor MLflow utilizado.
+
+### Ejecución de predicciones
+
+La API proporciona el endpoint `POST /predict` para realizar predicciones con el modelo P3.
+
+Se puede utilizar la interfaz Swagger disponible en:
+
+http://localhost:8000/docs
+
+Desde esta interfaz es posible consultar el esquema de entrada, enviar una solicitud de predicción y revisar la respuesta generada por la API.
+
+### Monitoreo y administración
+
+Para consultar los registros de ambos servicios:
+
+```bash
+docker compose logs -f
+```
+
+Para consultar únicamente los registros de la API:
+
+```bash
+docker compose logs -f api
+```
+
+Para consultar únicamente los registros de MLflow:
+
+```bash
+docker compose logs -f mlflow
+```
+
+Para detener los servicios:
+
+```bash
+docker compose down
+```
+
+Este comando detiene y elimina los contenedores, pero conserva los archivos de la base de datos y los artefactos almacenados en los volúmenes vinculados al proyecto.
+
+### Validación del despliegue
+
+Se verificó el funcionamiento de los servicios mediante las siguientes comprobaciones:
+
+- Construcción de las imágenes Docker.
+- Inicio correcto de los contenedores de MLflow y la API.
+- Disponibilidad de la interfaz web de MLflow.
+- Respuesta satisfactoria del endpoint `/health`, confirmando que el modelo está cargado.
+- Consulta de la información del modelo mediante `/model-info`.
+- Ejecución de una solicitud de predicción mediante `/predict`, obteniendo una respuesta HTTP 200.
+
+Con esta implementación, los servicios de MLflow y predicción pueden iniciarse conjuntamente mediante un único comando de Docker Compose, facilitando la reproducibilidad y ejecución del sistema.
 ## P3. Agrupamiento de estaciones por patrones de uso
 
 ### Pregunta de negocio
