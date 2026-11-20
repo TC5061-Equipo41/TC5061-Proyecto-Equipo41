@@ -7,6 +7,7 @@ from mibici.modeling.p1 import train
 
 MODELS = list(train.P1_MODELS)
 
+
 # ---------------------------------------------------------------------------
 # Setup
 # ---------------------------------------------------------------------------
@@ -82,8 +83,7 @@ def test_model_is_reproducible_with_seed(name, splits):
     spec = train.get_models()[name]
 
     preds = [
-        spec["pipeline"](spec["base"]).fit(X_train, y_train).predict(X_test)
-        for _ in range(2)
+        spec["pipeline"](spec["base"]).fit(X_train, y_train).predict(X_test) for _ in range(2)
     ]
     np.testing.assert_allclose(preds[0], preds[1])
 

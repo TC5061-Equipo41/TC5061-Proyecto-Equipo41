@@ -1,0 +1,47 @@
+name: On push workflow
+
+on:
+  push:
+    branches: ["**"]
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install -U pip
+          python -m pip install -r requirements.txt
+
+      - name: Check formatting
+        run: ruff format --check
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Build Docker images
+        run: docker compose build
+
+      - name: Start MLflow with Compose
+        run: |
+          touch mlflow-docker.db
+          docker compose up -d mlflow
+
+      - name: Check MLflow responds
+        run: curl --retry 15 --retry-delay 2 --retry-all-errors -fsS http://localhost:5000/health
+
+      - name: Show MLflow logs on failure
+        if: failure()
+        run: docker compose logs mlflow
+
+      - name: Shut down Compose
+        if: always()
+        run: docker compose down

@@ -131,7 +131,9 @@ def test_p1_control_different_seed_changes_random_forest(trips_two_months):
 # ---------------------------------------------------------------------------
 def _p2_splits(trips: pd.DataFrame):
     dataset = create_p2_dataset(trips.copy())
-    X_train, y_train, X_test, y_test, _, _ = p2_split(dataset, {"from": "2026_07", "to": "2026_08"})
+    X_train, y_train, X_test, y_test, _, _ = p2_split(
+        dataset, {"from": "2026_07", "to": "2026_08"}
+    )
     return X_train, y_train, X_test, y_test
 
 

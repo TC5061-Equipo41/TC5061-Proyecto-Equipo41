@@ -1,10 +1,8 @@
-
-
 import pandas as pd
 
 
-def create_p1_dataset(data: pd.DataFrame) -> pd.DataFrame :
-    for col in ['Inicio_del_viaje','Fin_del_viaje']:
+def create_p1_dataset(data: pd.DataFrame) -> pd.DataFrame:
+    for col in ["Inicio_del_viaje", "Fin_del_viaje"]:
         data[col] = pd.to_datetime(data[col])
 
     p1_df = data[["Origen_Id", "Inicio_del_viaje"]].copy()
@@ -21,11 +19,7 @@ def create_p1_dataset(data: pd.DataFrame) -> pd.DataFrame :
         names=["Origen_Id", "Fecha"],
     )
 
-    p1_df = (
-        counts.reindex(index, fill_value=0)
-        .rename("Viajes")
-        .reset_index()
-    )
+    p1_df = counts.reindex(index, fill_value=0).rename("Viajes").reset_index()
 
     p1_df["Hora"] = p1_df["Fecha"].dt.hour
     p1_df["Dia"] = p1_df["Fecha"].dt.day_name()
@@ -44,13 +38,9 @@ def get_train_test_split(
 
     TARGET = "Viajes"
 
-
     train = df[df["Fecha"] < TRAIN_END]
     test = df[(df["Fecha"] >= TEST_START) & (df["Fecha"] < TEST_END)]
-
 
     X_train, y_train = train[FEATURES], train[TARGET]
     X_test, y_test = test[FEATURES], test[TARGET]
     return X_train, y_train, X_test, y_test
-
-

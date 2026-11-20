@@ -173,18 +173,13 @@ def run_p3(base_dataset, data_version, date_range, model, params, overrides):
     ensure_p3_features(base_dataset, data_version)
 
     known = {"min_k", "max_k", "random_state"}
-    training_params = {
-        key: value
-        for key, value in params.items()
-        if key in known
-    }
+    training_params = {key: value for key, value in params.items() if key in known}
 
     return p3_train.train_p3_model(
         features_path=P3_FEATURES,
         experiment_name=EXPERIMENT_NAME,
         date_range=(
-            f"{date_range['from'].replace('_', '-')} a "
-            f"{date_range['to'].replace('_', '-')}"
+            f"{date_range['from'].replace('_', '-')} a {date_range['to'].replace('_', '-')}"
         ),
         **training_params,
     )
@@ -348,7 +343,6 @@ def main(
 ):
     """Entrena una pregunta (o todas) y registra las corridas en MLflow."""
     dispatch(question, model, params, stage_of_work)
-
 
 
 if __name__ == "__main__":

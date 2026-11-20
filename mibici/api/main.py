@@ -5,9 +5,6 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 import mlflow
-import pandas as pd
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
 
 MODEL_NAME = "mibici-equipo41-p3-grupos"
 MODEL_VERSION = "3"
@@ -15,10 +12,7 @@ MODEL_VERSION = "3"
 # Mantener el mismo tracking URI local utilizado para entrenar el modelo.
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-TRACKING_URI = os.getenv(
-    "MLFLOW_TRACKING_URI",
-    f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}"
-)
+TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", f"sqlite:///{PROJECT_ROOT / 'mlflow.db'}")
 
 mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_registry_uri(TRACKING_URI)
@@ -38,6 +32,7 @@ P1_CURRENT_URI = os.getenv("P1_CURRENT_URI")
 P1_CHALLENGER_MODEL = os.getenv("P1_CHALLENGER_MODEL")
 P1_CHALLENGER_ALIAS = os.getenv("P1_CHALLENGER_ALIAS")
 P1_CHALLENGER_URI = os.getenv("P1_CHALLENGER_URI")
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -70,7 +65,7 @@ def load_models():
         "p1_challenger": load_model(P1_CHALLENGER_MODEL, P1_CHALLENGER_ALIAS, P1_CHALLENGER_URI),
     }
 
-        
+
 app = FastAPI(
     title="MiBici API",
     description="API para predecir grupos de estaciones (P3) y viajes por estación y hora (P1) de MiBici.",

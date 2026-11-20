@@ -45,18 +45,22 @@ def predict_p3(body: P3PredictionRequest, request: Request):
             detail=f"Error al realizar la predicción: {exc}",
         ) from exc
 
+
 @router.post("/p1/abtest", response_model=P1PredictionResponse)
 def predict_p1_abtest(body: P1PredictionRequest, request: Request) -> P1PredictionResponse:
     model = choose_model(request.app.state.models)
 
-    features = pd.DataFrame([{
-        "Origen_Id": body.origen_id,
-        "Hora": body.hora,
-        "Dia": body.dia,
-    }]).astype({"Hora": "int32"})  # la firma del modelo espera Hora como int32
+    features = pd.DataFrame(
+        [
+            {
+                "Origen_Id": body.origen_id,
+                "Hora": body.hora,
+                "Dia": body.dia,
+            }
+        ]
+    ).astype({"Hora": "int32"})  # la firma del modelo espera Hora como int32
 
     prediction = max(0.0, float(model["loaded"].predict(features)[0]))
-
 
     response = P1PredictionResponse(prediction=prediction, model=model["alias"])
     log_p1_prediction(body, response)

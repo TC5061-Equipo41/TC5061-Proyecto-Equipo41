@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import matplotlib
@@ -21,9 +20,7 @@ def main(
 ):
     """Plot MiBici stations geographically by P3 cluster."""
     if not predictions_path.exists():
-        raise FileNotFoundError(
-            f"Predictions file not found: {predictions_path}"
-        )
+        raise FileNotFoundError(f"Predictions file not found: {predictions_path}")
 
     df = pd.read_csv(predictions_path)
     df = df.dropna(subset=["Latitud", "Longitud", "cluster"]).copy()

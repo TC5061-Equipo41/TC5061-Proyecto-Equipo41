@@ -20,13 +20,13 @@ from sklearn.metrics import silhouette_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 from mibici.config import (
     FIGURES_DIR,
     MODELS_DIR,
     PROCESSED_DATA_DIR,
     PROJ_ROOT,
 )
+from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 
 PATTERN_COLUMNS = [
     "salidas_manana",
@@ -62,10 +62,10 @@ def register_champion_model(run_id: str) -> str:
         raise TypeError("El modelo champion registrado no permite predict().")
 
     logger.success(
-        f"Modelo registrado: {MODEL_REGISTRY_NAME}, "
-        f"versión {registered.version}, alias champion"
+        f"Modelo registrado: {MODEL_REGISTRY_NAME}, versión {registered.version}, alias champion"
     )
     return champion_uri
+
 
 def prepare_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
     """Prepare station usage features for clustering."""
@@ -84,12 +84,8 @@ def prepare_features(df: pd.DataFrame) -> tuple[pd.DataFrame, list[str]]:
         feature_columns.remove(column)
         feature_columns.append(f"log_{column}")
 
-    df[feature_columns] = df[feature_columns].replace(
-        [float("inf"), float("-inf")], float("nan")
-    )
-    df[feature_columns] = df[feature_columns].fillna(
-        df[feature_columns].median()
-    )
+    df[feature_columns] = df[feature_columns].replace([float("inf"), float("-inf")], float("nan"))
+    df[feature_columns] = df[feature_columns].fillna(df[feature_columns].median())
     return df, feature_columns
 
 
@@ -161,24 +157,28 @@ def train_p3_model(
     git_commit = get_git_commit()
     candidates = []
 
-    with mlflow.start_run(run_name="P3 - Comparacion de modelos") as parent:
-        mlflow.set_tags({
-            "team": "41",
-            "question": "P3",
-            "task": "station_clustering",
-            "model_family": "clustering",
-            "stage_of_work": "search",
-            "git_commit": git_commit,
-            "date_range": date_range,
-        })
-        mlflow.log_params({
-            "data_file": features_path.name,
-            "data_sha256": data_hash,
-            "n_stations": len(X),
-            "random_state": random_state,
-            "scaler": "StandardScaler",
-            "features": ",".join(feature_columns),
-        })
+    with mlflow.start_run(run_name="P3 - Comparacion de modelos"):
+        mlflow.set_tags(
+            {
+                "team": "41",
+                "question": "P3",
+                "task": "station_clustering",
+                "model_family": "clustering",
+                "stage_of_work": "search",
+                "git_commit": git_commit,
+                "date_range": date_range,
+            }
+        )
+        mlflow.log_params(
+            {
+                "data_file": features_path.name,
+                "data_sha256": data_hash,
+                "n_stations": len(X),
+                "random_state": random_state,
+                "scaler": "StandardScaler",
+                "features": ",".join(feature_columns),
+            }
+        )
 
         # Nested search: one child run for each KMeans value of k.
         with mlflow.start_run(
@@ -186,54 +186,69 @@ def train_p3_model(
             nested=True,
         ):
             for k in range(min_k, max_k + 1):
-                pipeline = Pipeline([
-                    ("scaler", StandardScaler()),
-                    ("clusterer", KMeans(
-                        n_clusters=k,
-                        random_state=random_state,
-                        n_init=10,
-                    )),
-                ])
+                pipeline = Pipeline(
+                    [
+                        ("scaler", StandardScaler()),
+                        (
+                            "clusterer",
+                            KMeans(
+                                n_clusters=k,
+                                random_state=random_state,
+                                n_init=10,
+                            ),
+                        ),
+                    ]
+                )
 
                 with mlflow.start_run(
                     run_name=f"KMeans k={k}",
                     nested=True,
                 ) as candidate_run:
                     labels = pipeline.fit_predict(X)
-                    score = float(silhouette_score(
-                        pipeline.named_steps["scaler"].transform(X),
-                        labels,
-                    ))
-                    mlflow.set_tags({
-                        "question": "P3",
-                        "model_family": "KMeans",
-                        "candidate": "true",
-                    })
-                    mlflow.log_params({
-                        "algorithm": "KMeans",
-                        "n_clusters": k,
-                        "random_state": random_state,
-                        "n_init": 10,
-                    })
+                    score = float(
+                        silhouette_score(
+                            pipeline.named_steps["scaler"].transform(X),
+                            labels,
+                        )
+                    )
+                    mlflow.set_tags(
+                        {
+                            "question": "P3",
+                            "model_family": "KMeans",
+                            "candidate": "true",
+                        }
+                    )
+                    mlflow.log_params(
+                        {
+                            "algorithm": "KMeans",
+                            "n_clusters": k,
+                            "random_state": random_state,
+                            "n_init": 10,
+                        }
+                    )
                     mlflow.log_metric("silhouette_score", score)
                     log_candidate_model(pipeline, X, labels)
-                    candidates.append({
-                        "name": f"KMeans_k{k}",
-                        "algorithm": "KMeans",
-                        "n_clusters": k,
-                        "silhouette_score": score,
-                        "model": pipeline,
-                        "labels": labels,
-                        "run_id": candidate_run.info.run_id,
-                    })
+                    candidates.append(
+                        {
+                            "name": f"KMeans_k{k}",
+                            "algorithm": "KMeans",
+                            "n_clusters": k,
+                            "silhouette_score": score,
+                            "model": pipeline,
+                            "labels": labels,
+                            "run_id": candidate_run.info.run_id,
+                        }
+                    )
                     logger.info(f"KMeans k={k}: silhouette={score:.4f}")
 
         # Alternative algorithm: agglomerative clustering.
         for k in [2, 3, 4]:
-            model = Pipeline([
-                ("scaler", StandardScaler()),
-                ("clusterer", AgglomerativeClustering(n_clusters=k)),
-            ])
+            model = Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    ("clusterer", AgglomerativeClustering(n_clusters=k)),
+                ]
+            )
             with mlflow.start_run(
                 run_name=f"Agglomerative k={k}",
                 nested=True,
@@ -241,17 +256,21 @@ def train_p3_model(
                 labels = model.fit_predict(X)
                 scaled = model.named_steps["scaler"].transform(X)
                 score = float(silhouette_score(scaled, labels))
-                mlflow.set_tags({
-                    "question": "P3",
-                    "model_family": "AgglomerativeClustering",
-                    "candidate": "true",
-                })
-                mlflow.log_params({
-                    "algorithm": "AgglomerativeClustering",
-                    "n_clusters": k,
-                    "linkage": "ward",
-                    "scaler": "StandardScaler",
-                })
+                mlflow.set_tags(
+                    {
+                        "question": "P3",
+                        "model_family": "AgglomerativeClustering",
+                        "candidate": "true",
+                    }
+                )
+                mlflow.log_params(
+                    {
+                        "algorithm": "AgglomerativeClustering",
+                        "n_clusters": k,
+                        "linkage": "ward",
+                        "scaler": "StandardScaler",
+                    }
+                )
                 mlflow.log_metric("silhouette_score", score)
                 # AgglomerativeClustering has no predict method; its fitted
                 # model is saved as an artifact for reproducibility.
@@ -259,17 +278,17 @@ def train_p3_model(
                     {"algorithm": "AgglomerativeClustering", "n_clusters": k},
                     "candidate_config.json",
                 )
-                candidates.append({
-                    "name": f"Agglomerative_k{k}",
-                    "algorithm": "AgglomerativeClustering",
-                    "n_clusters": k,
-                    "silhouette_score": score,
-                    "model": model,
-                    "labels": labels,
-                })
-                logger.info(
-                    f"Agglomerative k={k}: silhouette={score:.4f}"
+                candidates.append(
+                    {
+                        "name": f"Agglomerative_k{k}",
+                        "algorithm": "AgglomerativeClustering",
+                        "n_clusters": k,
+                        "silhouette_score": score,
+                        "model": model,
+                        "labels": labels,
+                    }
                 )
+                logger.info(f"Agglomerative k={k}: silhouette={score:.4f}")
 
         # Alternative feature set: counts and duration only, with KMeans.
         alternative_columns = [
@@ -279,14 +298,19 @@ def train_p3_model(
         ]
         X_alt = data[alternative_columns].copy()
         for k in [2, 3, 4]:
-            pipeline = Pipeline([
-                ("scaler", StandardScaler()),
-                ("clusterer", KMeans(
-                    n_clusters=k,
-                    random_state=random_state,
-                    n_init=10,
-                )),
-            ])
+            pipeline = Pipeline(
+                [
+                    ("scaler", StandardScaler()),
+                    (
+                        "clusterer",
+                        KMeans(
+                            n_clusters=k,
+                            random_state=random_state,
+                            n_init=10,
+                        ),
+                    ),
+                ]
+            )
             with mlflow.start_run(
                 run_name=f"KMeans conteos k={k}",
                 nested=True,
@@ -294,45 +318,44 @@ def train_p3_model(
                 labels = pipeline.fit_predict(X_alt)
                 scaled = pipeline.named_steps["scaler"].transform(X_alt)
                 score = float(silhouette_score(scaled, labels))
-                mlflow.set_tags({
-                    "question": "P3",
-                    "model_family": "KMeans",
-                    "feature_set": "counts_duration",
-                    "candidate": "true",
-                })
-                mlflow.log_params({
-                    "algorithm": "KMeans",
-                    "n_clusters": k,
-                    "random_state": random_state,
-                    "feature_set": "counts_duration",
-                    "features": ",".join(alternative_columns),
-                })
+                mlflow.set_tags(
+                    {
+                        "question": "P3",
+                        "model_family": "KMeans",
+                        "feature_set": "counts_duration",
+                        "candidate": "true",
+                    }
+                )
+                mlflow.log_params(
+                    {
+                        "algorithm": "KMeans",
+                        "n_clusters": k,
+                        "random_state": random_state,
+                        "feature_set": "counts_duration",
+                        "features": ",".join(alternative_columns),
+                    }
+                )
                 mlflow.log_metric("silhouette_score", score)
                 log_candidate_model(pipeline, X_alt, labels)
-                candidates.append({
-                    "name": f"KMeans_conteos_k{k}",
-                    "algorithm": "KMeans",
-                    "n_clusters": k,
-                    "silhouette_score": score,
-                    "model": pipeline,
-                    "labels": labels,
-                    "feature_columns": alternative_columns,
-                    "run_id": candidate_run.info.run_id,
-                })
-                logger.info(
-                    f"KMeans conteos k={k}: silhouette={score:.4f}"
+                candidates.append(
+                    {
+                        "name": f"KMeans_conteos_k{k}",
+                        "algorithm": "KMeans",
+                        "n_clusters": k,
+                        "silhouette_score": score,
+                        "model": pipeline,
+                        "labels": labels,
+                        "feature_columns": alternative_columns,
+                        "run_id": candidate_run.info.run_id,
+                    }
                 )
+                logger.info(f"KMeans conteos k={k}: silhouette={score:.4f}")
 
         # Select the best candidate that supports predictions for new stations.
-        deployable_candidates = [
-            item for item in candidates
-            if hasattr(item["model"], "predict")
-        ]
+        deployable_candidates = [item for item in candidates if hasattr(item["model"], "predict")]
 
         if not deployable_candidates:
-            raise RuntimeError(
-                "No hay modelos candidatos compatibles con predict()."
-            )
+            raise RuntimeError("No hay modelos candidatos compatibles con predict().")
 
         best = max(
             deployable_candidates,
@@ -342,26 +365,31 @@ def train_p3_model(
         best_labels = best["labels"]
         best_columns = best.get("feature_columns", feature_columns)
 
-        joblib.dump({
-            "model": best_model,
-            "feature_columns": best_columns,
-            "algorithm": best["algorithm"],
-            "n_clusters": best["n_clusters"],
-        }, model_path)
+        joblib.dump(
+            {
+                "model": best_model,
+                "feature_columns": best_columns,
+                "algorithm": best["algorithm"],
+                "n_clusters": best["n_clusters"],
+            },
+            model_path,
+        )
 
         result = raw.copy()
         result["cluster"] = best_labels
         result.to_csv(labels_path, index=False)
 
-        comparison = pd.DataFrame([
-            {
-                "model": item["name"],
-                "algorithm": item["algorithm"],
-                "n_clusters": item["n_clusters"],
-                "silhouette_score": item["silhouette_score"],
-            }
-            for item in candidates
-        ]).sort_values("silhouette_score", ascending=False)
+        comparison = pd.DataFrame(
+            [
+                {
+                    "model": item["name"],
+                    "algorithm": item["algorithm"],
+                    "n_clusters": item["n_clusters"],
+                    "silhouette_score": item["silhouette_score"],
+                }
+                for item in candidates
+            ]
+        ).sort_values("silhouette_score", ascending=False)
 
         comparison_path = labels_path.with_name("p3_model_comparison.csv")
         comparison.to_csv(comparison_path, index=False)
@@ -385,9 +413,7 @@ def train_p3_model(
         mlflow.set_tag("selected_n_clusters", str(best["n_clusters"]))
 
         if not best.get("run_id"):
-            raise RuntimeError(
-                f"El candidato ganador {best['name']} no tiene run_id registrado."
-            )
+            raise RuntimeError(f"El candidato ganador {best['name']} no tiene run_id registrado.")
 
         champion_uri = register_champion_model(best["run_id"])
         mlflow.log_param("registered_model_name", MODEL_REGISTRY_NAME)
@@ -399,10 +425,7 @@ def train_p3_model(
         mlflow.log_artifact(str(comparison_plot), artifact_path="plots")
 
         mlflow.set_tag("selected_model", best["name"])
-        logger.success(
-            f"Selected {best['name']} with silhouette "
-            f"{best['silhouette_score']:.4f}"
-        )
+        logger.success(f"Selected {best['name']} with silhouette {best['silhouette_score']:.4f}")
 
     return {
         "model_name": best["name"],
@@ -421,14 +444,14 @@ def train_p3_model(
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train P3 station clustering.")
-    parser.add_argument("--features-path", type=Path,
-                        default=PROCESSED_DATA_DIR / "p3_station_features.csv")
-    parser.add_argument("--model-path", type=Path,
-                        default=MODELS_DIR / "p3_kmeans.pkl")
-    parser.add_argument("--labels-path", type=Path,
-                        default=PROCESSED_DATA_DIR / "p3_station_clusters.csv")
-    parser.add_argument("--figure-path", type=Path,
-                        default=FIGURES_DIR / "p3_clusters.png")
+    parser.add_argument(
+        "--features-path", type=Path, default=PROCESSED_DATA_DIR / "p3_station_features.csv"
+    )
+    parser.add_argument("--model-path", type=Path, default=MODELS_DIR / "p3_kmeans.pkl")
+    parser.add_argument(
+        "--labels-path", type=Path, default=PROCESSED_DATA_DIR / "p3_station_clusters.csv"
+    )
+    parser.add_argument("--figure-path", type=Path, default=FIGURES_DIR / "p3_clusters.png")
     parser.add_argument("--min-k", type=int, default=2)
     parser.add_argument("--max-k", type=int, default=8)
     parser.add_argument("--random-state", type=int, default=42)

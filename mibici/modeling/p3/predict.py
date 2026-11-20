@@ -1,4 +1,4 @@
-﻿from pathlib import Path
+from pathlib import Path
 
 import joblib
 from loguru import logger
@@ -19,9 +19,7 @@ PATTERN_COLUMNS = [
 ]
 
 
-def prepare_features(
-    df: pd.DataFrame, feature_columns: list[str]
-) -> pd.DataFrame:
+def prepare_features(df: pd.DataFrame, feature_columns: list[str]) -> pd.DataFrame:
     """Prepare station features using the same transformations as training."""
     data = df.copy()
     total = data["viajes_salida"].replace(0, 1)
@@ -33,20 +31,14 @@ def prepare_features(
         data[column] = data[column].clip(lower=0)
         data[f"log_{column}"] = np.log1p(data[column])
 
-    missing_columns = [
-        column for column in feature_columns if column not in data.columns
-    ]
+    missing_columns = [column for column in feature_columns if column not in data.columns]
     if missing_columns:
-        raise ValueError(
-            f"Faltan columnas requeridas para predecir: {missing_columns}"
-        )
+        raise ValueError(f"Faltan columnas requeridas para predecir: {missing_columns}")
 
     data[feature_columns] = data[feature_columns].replace(
         [float("inf"), float("-inf")], float("nan")
     )
-    data[feature_columns] = data[feature_columns].fillna(
-        data[feature_columns].median()
-    )
+    data[feature_columns] = data[feature_columns].fillna(data[feature_columns].median())
 
     return data[feature_columns]
 
@@ -66,11 +58,8 @@ def main(
     if not features_path.exists():
         raise FileNotFoundError(f"Features file not found: {features_path}")
 
-
     if model_source not in ("local", "mlflow"):
-        raise typer.BadParameter(
-            "El origen debe ser 'local' o 'mlflow'."
-        )
+        raise typer.BadParameter("El origen debe ser 'local' o 'mlflow'.")
 
     if model_source == "local":
         if not model_path.exists():
@@ -94,20 +83,12 @@ def main(
         signature = model_info.signature
 
         if signature is None or signature.inputs is None:
-            raise ValueError(
-                f"El modelo de MLflow no tiene firma de entrada: {model_uri}"
-            )
+            raise ValueError(f"El modelo de MLflow no tiene firma de entrada: {model_uri}")
 
-        feature_columns = [
-            item.name for item in signature.inputs.inputs
-        ]
+        feature_columns = [item.name for item in signature.inputs.inputs]
 
         model = mlflow.sklearn.load_model(model_uri)
-        logger.info(
-            f"Using MLflow model: {model_uri}. "
-            f"Features: {feature_columns}"
-        )
-
+        logger.info(f"Using MLflow model: {model_uri}. Features: {feature_columns}")
 
     raw = pd.read_csv(features_path)
     X = prepare_features(raw, feature_columns)
@@ -121,10 +102,7 @@ def main(
         labels = model.predict(bundle["scaler"].transform(X))
 
     else:
-        raise TypeError(
-            "El modelo cargado no permite predecir clústeres "
-            "con el formato esperado."
-        )
+        raise TypeError("El modelo cargado no permite predecir clústeres con el formato esperado.")
 
     predictions = raw.copy()
     predictions["cluster"] = labels
@@ -135,8 +113,7 @@ def main(
     logger.success(f"Predictions saved to {predictions_path}")
     logger.info(f"Stations processed: {len(predictions)}")
     logger.info(
-        "Stations per cluster:\n"
-        + predictions["cluster"].value_counts().sort_index().to_string()
+        "Stations per cluster:\n" + predictions["cluster"].value_counts().sort_index().to_string()
     )
 
 

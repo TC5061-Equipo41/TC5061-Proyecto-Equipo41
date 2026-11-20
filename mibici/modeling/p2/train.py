@@ -28,11 +28,11 @@ from sklearn.metrics import (
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
-from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 from mibici.config import (
     FIGURES_DIR,
     INTERIM_DATA_DIR,
 )
+from mibici.modeling.tracking import get_git_commit as tracking_git_commit
 from mibici.p2.dataset import (
     RISK_THRESHOLD,
     create_p2_dataset,
@@ -96,19 +96,11 @@ def get_train_test_split(
         format="%Y_%m",
     )
 
-    test_end = (
-        test_start
-        + pd.offsets.MonthBegin(1)
-    )
+    test_end = test_start + pd.offsets.MonthBegin(1)
 
-    train = dataset[
-        dataset["fecha_hora"] < test_start
-    ]
+    train = dataset[dataset["fecha_hora"] < test_start]
 
-    test = dataset[
-        (dataset["fecha_hora"] >= test_start)
-        & (dataset["fecha_hora"] < test_end)
-    ]
+    test = dataset[(dataset["fecha_hora"] >= test_start) & (dataset["fecha_hora"] < test_end)]
 
     return (
         train[FEATURES],
@@ -155,14 +147,10 @@ def get_scores(
     """
 
     if hasattr(model, "predict_proba"):
-        return model.predict_proba(
-            X_test
-        )[:, 1]
+        return model.predict_proba(X_test)[:, 1]
 
     if hasattr(model, "decision_function"):
-        return model.decision_function(
-            X_test
-        )
+        return model.decision_function(X_test)
 
     return predictions
 
@@ -226,21 +214,11 @@ def save_confusion_matrix(
         exist_ok=True,
     )
 
-    slug = (
-        name.lower()
-        .replace(" ", "_")
-        .replace("-", "_")
-        .replace(".", "_")
-    )
+    slug = name.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
 
-    figure_path = (
-        FIGURES_DIR
-        / f"p2_{slug}_confusion_matrix.png"
-    )
+    figure_path = FIGURES_DIR / f"p2_{slug}_confusion_matrix.png"
 
-    fig, ax = plt.subplots(
-        figsize=(6, 5)
-    )
+    fig, ax = plt.subplots(figsize=(6, 5))
 
     ConfusionMatrixDisplay(
         confusion_matrix=matrix,
@@ -253,9 +231,7 @@ def save_confusion_matrix(
         values_format="d",
     )
 
-    ax.set_title(
-        f"P2 - {name}"
-    )
+    ax.set_title(f"P2 - {name}")
 
     fig.tight_layout()
 
@@ -283,21 +259,11 @@ def save_precision_recall_curve(
         exist_ok=True,
     )
 
-    slug = (
-        name.lower()
-        .replace(" ", "_")
-        .replace("-", "_")
-        .replace(".", "_")
-    )
+    slug = name.lower().replace(" ", "_").replace("-", "_").replace(".", "_")
 
-    figure_path = (
-        FIGURES_DIR
-        / f"p2_{slug}_precision_recall.png"
-    )
+    figure_path = FIGURES_DIR / f"p2_{slug}_precision_recall.png"
 
-    fig, ax = plt.subplots(
-        figsize=(6, 5)
-    )
+    fig, ax = plt.subplots(figsize=(6, 5))
 
     PrecisionRecallDisplay.from_predictions(
         y_test,
@@ -306,9 +272,7 @@ def save_precision_recall_curve(
         ax=ax,
     )
 
-    ax.set_title(
-        f"P2 - Precision-Recall - {name}"
-    )
+    ax.set_title(f"P2 - Precision-Recall - {name}")
 
     fig.tight_layout()
 
@@ -341,9 +305,7 @@ def log_run_config(
     }
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        config_path = (
-            f"{temp_dir}/p2_run_config.json"
-        )
+        config_path = f"{temp_dir}/p2_run_config.json"
 
         with open(
             config_path,
@@ -369,9 +331,7 @@ def get_project_parent_run_id():
     Obtiene el ID de la corrida padre creada por MLflow Project.
     """
 
-    return os.getenv(
-        "MIBICI_PROJECT_PARENT_RUN_ID"
-    )
+    return os.getenv("MIBICI_PROJECT_PARENT_RUN_ID")
 
 
 def run_experiment(
@@ -394,9 +354,7 @@ def run_experiment(
     Entrena, evalúa y registra una corrida de P2.
     """
 
-    project_parent_run_id = (
-        get_project_parent_run_id()
-    )
+    project_parent_run_id = get_project_parent_run_id()
 
     start_run_kwargs = {
         "run_name": f"P2 - {name}",
@@ -406,22 +364,15 @@ def run_experiment(
         start_run_kwargs["nested"] = True
 
     elif project_parent_run_id:
-        start_run_kwargs[
-            "parent_run_id"
-        ] = project_parent_run_id
+        start_run_kwargs["parent_run_id"] = project_parent_run_id
 
-    with mlflow.start_run(
-        **start_run_kwargs
-    ) as run:
-
+    with mlflow.start_run(**start_run_kwargs) as run:
         model.fit(
             X_train,
             y_train,
         )
 
-        predictions = model.predict(
-            X_test
-        )
+        predictions = model.predict(X_test)
 
         scores = get_scores(
             model,
@@ -435,63 +386,39 @@ def run_experiment(
             scores,
         )
 
-        print(
-            f"\n{name}"
-        )
+        print(f"\n{name}")
 
-        print(
-            "-" * 50
-        )
+        print("-" * 50)
 
         for metric, value in metrics.items():
-            print(
-                f"{metric}: "
-                f"{value:.4f}"
-            )
+            print(f"{metric}: {value:.4f}")
 
         matrix = confusion_matrix(
             y_test,
             predictions,
         )
 
-        print(
-            "\nMatriz de confusión:"
+        print("\nMatriz de confusión:")
+
+        print(matrix)
+
+        confusion_path = save_confusion_matrix(
+            name,
+            y_test,
+            predictions,
         )
 
-        print(
-            matrix
-        )
-
-        confusion_path = (
-            save_confusion_matrix(
-                name,
-                y_test,
-                predictions,
-            )
-        )
-
-        precision_recall_path = (
-            save_precision_recall_curve(
-                name,
-                y_test,
-                scores,
-            )
+        precision_recall_path = save_precision_recall_curve(
+            name,
+            y_test,
+            scores,
         )
 
         train_period = (
-            f"{date_range['from']}"
-            f"_to_"
-            f"{(
-                test_start
-                - pd.offsets.MonthBegin(1)
-            ).strftime('%Y_%m')}"
+            f"{date_range['from']}_to_{(test_start - pd.offsets.MonthBegin(1)).strftime('%Y_%m')}"
         )
 
-        test_period = (
-            test_start.strftime(
-                "%Y_%m"
-            )
-        )
+        test_period = test_start.strftime("%Y_%m")
 
         mlflow.set_tags(
             {
@@ -502,11 +429,7 @@ def run_experiment(
                 "stage_of_work": stage_of_work,
                 "git_commit": get_git_commit(),
                 "data_version": data_version,
-                "date_range": (
-                    f"{date_range['from']}"
-                    f"_to_"
-                    f"{date_range['to']}"
-                ),
+                "date_range": (f"{date_range['from']}_to_{date_range['to']}"),
             }
         )
 
@@ -520,28 +443,18 @@ def run_experiment(
             }
         )
 
-        mlflow.log_metrics(
-            metrics
-        )
+        mlflow.log_metrics(metrics)
 
         # -------------------------------------------------
         # Registrar manifiesto de versión de datos
         # -------------------------------------------------
 
-        manifest_path = (
-            INTERIM_DATA_DIR
-            / (
-                f"data_manifest-"
-                f"{date_range['from']}-"
-                f"{date_range['to']}.json"
-            )
+        manifest_path = INTERIM_DATA_DIR / (
+            f"data_manifest-{date_range['from']}-{date_range['to']}.json"
         )
 
         if not manifest_path.exists():
-            raise FileNotFoundError(
-                "No se encontró el manifiesto de datos: "
-                f"{manifest_path}"
-            )
+            raise FileNotFoundError(f"No se encontró el manifiesto de datos: {manifest_path}")
 
         mlflow.log_artifact(
             str(manifest_path),
@@ -576,11 +489,9 @@ def run_experiment(
         # Registrar metadata del dataset de entrenamiento
         # -------------------------------------------------
 
-        training_dataset = (
-            mlflow.data.from_pandas(
-                X_train,
-                name="p2_training_features",
-            )
+        training_dataset = mlflow.data.from_pandas(
+            X_train,
+            name="p2_training_features",
         )
 
         mlflow.log_input(
@@ -592,15 +503,9 @@ def run_experiment(
         # Signature e input example
         # -------------------------------------------------
 
-        input_example = (
-            X_train.head(5).copy()
-        )
+        input_example = X_train.head(5).copy()
 
-        example_prediction = (
-            model.predict(
-                input_example
-            )
-        )
+        example_prediction = model.predict(input_example)
 
         signature = infer_signature(
             input_example,
@@ -629,6 +534,7 @@ def run_experiment(
         **metrics,
     }
 
+
 def run_logistic_c_search(
     X_train,
     y_train,
@@ -648,23 +554,16 @@ def run_logistic_c_search(
 
     search_results = []
 
-    project_parent_run_id = (
-        get_project_parent_run_id()
-    )
+    project_parent_run_id = get_project_parent_run_id()
 
     search_run_kwargs = {
         "run_name": "P2 - Logistic C Search",
     }
 
     if project_parent_run_id:
-        search_run_kwargs[
-            "parent_run_id"
-        ] = project_parent_run_id
+        search_run_kwargs["parent_run_id"] = project_parent_run_id
 
-    with mlflow.start_run(
-        **search_run_kwargs
-    ) as parent_run:
-
+    with mlflow.start_run(**search_run_kwargs) as parent_run:
         mlflow.set_tags(
             {
                 "question": "P2",
@@ -684,24 +583,14 @@ def run_logistic_c_search(
 
         mlflow.log_param(
             "C_values",
-            ",".join(
-                str(value)
-                for value
-                in LOGISTIC_C_VALUES
-            ),
+            ",".join(str(value) for value in LOGISTIC_C_VALUES),
         )
 
         for c_value in LOGISTIC_C_VALUES:
-
-            logistic = build_logistic_model(
-                c_value=c_value
-            )
+            logistic = build_logistic_model(c_value=c_value)
 
             result = run_experiment(
-                name=(
-                    "Logistic Regression "
-                    f"C={c_value}"
-                ),
+                name=(f"Logistic Regression C={c_value}"),
                 model=logistic,
                 model_family="LogisticRegression",
                 stage_of_work="search_candidate",
@@ -724,26 +613,18 @@ def run_logistic_c_search(
             )
 
             result["C"] = c_value
-            result[
-                "search_parent_run_id"
-            ] = parent_run.info.run_id
+            result["search_parent_run_id"] = parent_run.info.run_id
 
-            search_results.append(
-                result
-            )
+            search_results.append(result)
 
         best_search_result = max(
             search_results,
-            key=lambda result: result[
-                SELECTION_METRIC
-            ],
+            key=lambda result: result[SELECTION_METRIC],
         )
 
         mlflow.log_metric(
             "best_test_average_precision",
-            best_search_result[
-                SELECTION_METRIC
-            ],
+            best_search_result[SELECTION_METRIC],
         )
 
         mlflow.log_param(
@@ -751,17 +632,10 @@ def run_logistic_c_search(
             best_search_result["C"],
         )
 
-        search_dataframe = (
-            pd.DataFrame(
-                search_results
-            )
-        )
+        search_dataframe = pd.DataFrame(search_results)
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            search_path = (
-                f"{temp_dir}/"
-                "p2_logistic_c_search.csv"
-            )
+            search_path = f"{temp_dir}/p2_logistic_c_search.csv"
 
             search_dataframe.to_csv(
                 search_path,
@@ -775,6 +649,7 @@ def run_logistic_c_search(
 
     return search_results
 
+
 def register_champion(
     best_result,
     data_version,
@@ -784,23 +659,15 @@ def register_champion(
     el alias champion.
     """
 
-    run_id = best_result[
-        "run_id"
-    ]
+    run_id = best_result["run_id"]
 
-    model_uri = (
-        f"runs:/{run_id}/model"
-    )
+    model_uri = f"runs:/{run_id}/model"
 
-    print(
-        "\nRegistrando mejor modelo P2..."
-    )
+    print("\nRegistrando mejor modelo P2...")
 
-    registered_model = (
-        mlflow.register_model(
-            model_uri=model_uri,
-            name=REGISTERED_MODEL_NAME,
-        )
+    registered_model = mlflow.register_model(
+        model_uri=model_uri,
+        name=REGISTERED_MODEL_NAME,
     )
 
     client = MlflowClient()
@@ -818,11 +685,7 @@ def register_champion(
     client.update_model_version(
         name=REGISTERED_MODEL_NAME,
         version=registered_model.version,
-        description=(
-            f"Modelo seleccionado usando "
-            f"{SELECTION_METRIC}. "
-            f"Run de origen: {run_id}."
-        ),
+        description=(f"Modelo seleccionado usando {SELECTION_METRIC}. Run de origen: {run_id}."),
     )
 
     client.set_model_version_tag(
@@ -859,34 +722,18 @@ def register_champion(
         version=registered_model.version,
     )
 
-    champion_uri = (
-        f"models:/{REGISTERED_MODEL_NAME}"
-        "@champion"
-    )
+    champion_uri = f"models:/{REGISTERED_MODEL_NAME}@champion"
 
     # Verificación requerida por la actividad.
-    mlflow.sklearn.load_model(
-        champion_uri
-    )
+    mlflow.sklearn.load_model(champion_uri)
 
-    print(
-        f"\nModelo registrado: "
-        f"{REGISTERED_MODEL_NAME}"
-    )
+    print(f"\nModelo registrado: {REGISTERED_MODEL_NAME}")
 
-    print(
-        f"Versión: "
-        f"{registered_model.version}"
-    )
+    print(f"Versión: {registered_model.version}")
 
-    print(
-        "Alias: champion"
-    )
+    print("Alias: champion")
 
-    print(
-        f"URI verificada: "
-        f"{champion_uri}"
-    )
+    print(f"URI verificada: {champion_uri}")
 
     return registered_model.version
 
@@ -919,18 +766,11 @@ def train_p2_model(
     }
 
     if model not in valid_models:
-        raise ValueError(
-            f"Modelo P2 no válido: {model}. "
-            f"Opciones: {sorted(valid_models)}"
-        )
+        raise ValueError(f"Modelo P2 no válido: {model}. Opciones: {sorted(valid_models)}")
 
-    print(
-        "\nConstruyendo dataset P2..."
-    )
+    print("\nConstruyendo dataset P2...")
 
-    dataset = create_p2_dataset(
-        original_data
-    )
+    dataset = create_p2_dataset(original_data)
 
     (
         X_train,
@@ -944,33 +784,17 @@ def train_p2_model(
         date_range,
     )
 
-    print(
-        f"Train: {len(X_train):,}"
-    )
+    print(f"Train: {len(X_train):,}")
 
-    print(
-        f"Test:  {len(X_test):,}"
-    )
+    print(f"Test:  {len(X_test):,}")
 
-    print(
-        "\nDistribución target train:"
-    )
+    print("\nDistribución target train:")
 
-    print(
-        y_train.value_counts(
-            normalize=True
-        )
-    )
+    print(y_train.value_counts(normalize=True))
 
-    print(
-        "\nDistribución target test:"
-    )
+    print("\nDistribución target test:")
 
-    print(
-        y_test.value_counts(
-            normalize=True
-        )
-    )
+    print(y_test.value_counts(normalize=True))
 
     all_results = []
 
@@ -982,10 +806,7 @@ def train_p2_model(
         "all",
         "dummy",
     }:
-
-        dummy = DummyClassifier(
-            strategy="most_frequent"
-        )
+        dummy = DummyClassifier(strategy="most_frequent")
 
         dummy_result = run_experiment(
             name="DummyClassifier",
@@ -1006,9 +827,7 @@ def train_p2_model(
             test_end=test_end,
         )
 
-        all_results.append(
-            dummy_result
-        )
+        all_results.append(dummy_result)
 
     # -------------------------------------------------
     # BASELINE 2: Logistic Regression
@@ -1018,49 +837,31 @@ def train_p2_model(
         "all",
         "logistic",
     }:
+        baseline_logistic = build_logistic_model(c_value=1.0)
 
-        baseline_logistic = (
-            build_logistic_model(
-                c_value=1.0
-            )
+        baseline_logistic_result = run_experiment(
+            name=("Logistic Regression Baseline"),
+            model=baseline_logistic,
+            model_family=("LogisticRegression"),
+            stage_of_work="baseline",
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            parameters={
+                "model": ("LogisticRegression"),
+                "C": 1.0,
+                "class_weight": ("balanced"),
+                "max_iter": 1000,
+                "random_state": 42,
+            },
+            data_version=data_version,
+            date_range=date_range,
+            test_start=test_start,
+            test_end=test_end,
         )
 
-        baseline_logistic_result = (
-            run_experiment(
-                name=(
-                    "Logistic Regression "
-                    "Baseline"
-                ),
-                model=baseline_logistic,
-                model_family=(
-                    "LogisticRegression"
-                ),
-                stage_of_work="baseline",
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-                parameters={
-                    "model": (
-                        "LogisticRegression"
-                    ),
-                    "C": 1.0,
-                    "class_weight": (
-                        "balanced"
-                    ),
-                    "max_iter": 1000,
-                    "random_state": 42,
-                },
-                data_version=data_version,
-                date_range=date_range,
-                test_start=test_start,
-                test_end=test_end,
-            )
-        )
-
-        all_results.append(
-            baseline_logistic_result
-        )
+        all_results.append(baseline_logistic_result)
 
     # -------------------------------------------------
     # HYPERPARAMETER SEARCH
@@ -1070,23 +871,18 @@ def train_p2_model(
         "all",
         "logistic_search",
     }:
-
-        logistic_search_results = (
-            run_logistic_c_search(
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-                data_version=data_version,
-                date_range=date_range,
-                test_start=test_start,
-                test_end=test_end,
-            )
+        logistic_search_results = run_logistic_c_search(
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            data_version=data_version,
+            date_range=date_range,
+            test_start=test_start,
+            test_end=test_end,
         )
 
-        all_results.extend(
-            logistic_search_results
-        )
+        all_results.extend(logistic_search_results)
 
     # -------------------------------------------------
     # RANDOM FOREST
@@ -1096,52 +892,39 @@ def train_p2_model(
         "all",
         "random_forest",
     }:
-
-        random_forest = (
-            RandomForestClassifier(
-                n_estimators=100,
-                max_depth=12,
-                min_samples_leaf=5,
-                class_weight="balanced",
-                random_state=42,
-                n_jobs=-1,
-            )
+        random_forest = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=12,
+            min_samples_leaf=5,
+            class_weight="balanced",
+            random_state=42,
+            n_jobs=-1,
         )
 
-        random_forest_result = (
-            run_experiment(
-                name="Random Forest",
-                model=random_forest,
-                model_family=(
-                    "RandomForestClassifier"
-                ),
-                stage_of_work="candidate",
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-                parameters={
-                    "model": (
-                        "RandomForestClassifier"
-                    ),
-                    "n_estimators": 100,
-                    "max_depth": 12,
-                    "min_samples_leaf": 5,
-                    "class_weight": (
-                        "balanced"
-                    ),
-                    "random_state": 42,
-                },
-                data_version=data_version,
-                date_range=date_range,
-                test_start=test_start,
-                test_end=test_end,
-            )
+        random_forest_result = run_experiment(
+            name="Random Forest",
+            model=random_forest,
+            model_family=("RandomForestClassifier"),
+            stage_of_work="candidate",
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            parameters={
+                "model": ("RandomForestClassifier"),
+                "n_estimators": 100,
+                "max_depth": 12,
+                "min_samples_leaf": 5,
+                "class_weight": ("balanced"),
+                "random_state": 42,
+            },
+            data_version=data_version,
+            date_range=date_range,
+            test_start=test_start,
+            test_end=test_end,
         )
 
-        all_results.append(
-            random_forest_result
-        )
+        all_results.append(random_forest_result)
 
     # -------------------------------------------------
     # HIST GRADIENT BOOSTING
@@ -1151,79 +934,57 @@ def train_p2_model(
         "all",
         "hist_gradient_boosting",
     }:
-
-        hist_gradient_boosting = (
-            HistGradientBoostingClassifier(
-                learning_rate=0.1,
-                max_iter=100,
-                max_leaf_nodes=31,
-                l2_regularization=1.0,
-                class_weight="balanced",
-                random_state=42,
-            )
+        hist_gradient_boosting = HistGradientBoostingClassifier(
+            learning_rate=0.1,
+            max_iter=100,
+            max_leaf_nodes=31,
+            l2_regularization=1.0,
+            class_weight="balanced",
+            random_state=42,
         )
 
-        hist_gradient_result = (
-            run_experiment(
-                name=(
-                    "Hist Gradient Boosting"
-                ),
-                model=hist_gradient_boosting,
-                model_family=(
-                    "HistGradientBoostingClassifier"
-                ),
-                stage_of_work="candidate",
-                X_train=X_train,
-                y_train=y_train,
-                X_test=X_test,
-                y_test=y_test,
-                parameters={
-                    "model": (
-                        "HistGradientBoostingClassifier"
-                    ),
-                    "learning_rate": 0.1,
-                    "max_iter": 100,
-                    "max_leaf_nodes": 31,
-                    "l2_regularization": 1.0,
-                    "class_weight": (
-                        "balanced"
-                    ),
-                    "random_state": 42,
-                },
-                data_version=data_version,
-                date_range=date_range,
-                test_start=test_start,
-                test_end=test_end,
-            )
+        hist_gradient_result = run_experiment(
+            name=("Hist Gradient Boosting"),
+            model=hist_gradient_boosting,
+            model_family=("HistGradientBoostingClassifier"),
+            stage_of_work="candidate",
+            X_train=X_train,
+            y_train=y_train,
+            X_test=X_test,
+            y_test=y_test,
+            parameters={
+                "model": ("HistGradientBoostingClassifier"),
+                "learning_rate": 0.1,
+                "max_iter": 100,
+                "max_leaf_nodes": 31,
+                "l2_regularization": 1.0,
+                "class_weight": ("balanced"),
+                "random_state": 42,
+            },
+            data_version=data_version,
+            date_range=date_range,
+            test_start=test_start,
+            test_end=test_end,
         )
 
-        all_results.append(
-            hist_gradient_result
-        )
+        all_results.append(hist_gradient_result)
 
     # -------------------------------------------------
     # Resultados
     # -------------------------------------------------
 
-    results = pd.DataFrame(
-        all_results
-    )
+    results = pd.DataFrame(all_results)
 
     if results.empty:
-        raise RuntimeError(
-            "No se generaron resultados para P2."
-        )
+        raise RuntimeError("No se generaron resultados para P2.")
 
-    results[
-        "is_champion"
-    ] = False
+    results["is_champion"] = False
 
     # -------------------------------------------------
     # Flujo completo: comparar candidatos
     # -------------------------------------------------
 
     if model == "all":
-
         candidate_results = [
             result
             for result in all_results
@@ -1236,21 +997,12 @@ def train_p2_model(
 
         best_result = max(
             candidate_results,
-            key=lambda result: result[
-                SELECTION_METRIC
-            ],
+            key=lambda result: result[SELECTION_METRIC],
         )
 
-        results[
-            "is_champion"
-        ] = (
-            results["run_id"]
-            == best_result["run_id"]
-        )
+        results["is_champion"] = results["run_id"] == best_result["run_id"]
 
-        print(
-            "\nComparación final P2:"
-        )
+        print("\nComparación final P2:")
 
         display_columns = [
             "model",
@@ -1264,81 +1016,45 @@ def train_p2_model(
             "is_champion",
         ]
 
-        print(
-            results[
-                display_columns
-            ].to_string(
-                index=False
-            )
+        print(results[display_columns].to_string(index=False))
+
+        print("\nMejor candidato P2:")
+
+        print(best_result["model"])
+
+        print(f"{SELECTION_METRIC}: {best_result[SELECTION_METRIC]:.4f}")
+
+        champion_version = register_champion(
+            best_result=best_result,
+            data_version=data_version,
         )
 
-        print(
-            "\nMejor candidato P2:"
-        )
-
-        print(
-            best_result["model"]
-        )
-
-        print(
-            f"{SELECTION_METRIC}: "
-            f"{best_result[SELECTION_METRIC]:.4f}"
-        )
-
-        champion_version = (
-            register_champion(
-                best_result=best_result,
-                data_version=data_version,
-            )
-        )
-
-        print(
-            f"\nChampion P2 versión: "
-            f"{champion_version}"
-        )
+        print(f"\nChampion P2 versión: {champion_version}")
 
     # -------------------------------------------------
     # Reproducción directa del modelo ganador
     # -------------------------------------------------
 
     elif model == "hist_gradient_boosting":
-
         best_result = all_results[0]
 
-        results[
-            "is_champion"
-        ] = True
+        results["is_champion"] = True
 
-        print(
-            "\nReproduciendo modelo ganador P2:"
+        print("\nReproduciendo modelo ganador P2:")
+
+        print(best_result["model"])
+
+        print(f"{SELECTION_METRIC}: {best_result[SELECTION_METRIC]:.4f}")
+
+        champion_version = register_champion(
+            best_result=best_result,
+            data_version=data_version,
         )
 
-        print(
-            best_result["model"]
-        )
-
-        print(
-            f"{SELECTION_METRIC}: "
-            f"{best_result[SELECTION_METRIC]:.4f}"
-        )
-
-        champion_version = (
-            register_champion(
-                best_result=best_result,
-                data_version=data_version,
-            )
-        )
-
-        print(
-            f"\nChampion P2 versión: "
-            f"{champion_version}"
-        )
+        print(f"\nChampion P2 versión: {champion_version}")
 
     else:
-
-        print(
-            "\nResultado P2:"
-        )
+        print("\nResultado P2:")
 
         display_columns = [
             "model",
@@ -1351,12 +1067,6 @@ def train_p2_model(
             "test_average_precision",
         ]
 
-        print(
-            results[
-                display_columns
-            ].to_string(
-                index=False
-            )
-        )
+        print(results[display_columns].to_string(index=False))
 
     return results

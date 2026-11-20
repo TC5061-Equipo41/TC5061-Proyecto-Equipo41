@@ -1,4 +1,3 @@
-
 from loguru import logger
 import mlflow
 from mlflow.tracking import MlflowClient
@@ -23,13 +22,20 @@ REGISTERED_MODEL_NAME = "mibici-equipo41-p1-demanda"
 CHAMPION_ALIAS = "champion"
 TRAIN_CHALLENGER = True
 
-def train_p1_model(original_data: pd.DataFrame, data_version: str, date_range: dict, model: str = 'all', params: dict | None = None):
+
+def train_p1_model(
+    original_data: pd.DataFrame,
+    data_version: str,
+    date_range: dict,
+    model: str = "all",
+    params: dict | None = None,
+):
     validate_model_and_params(model, params)
-    
+
     dataset = create_p1_dataset(original_data)
     splits = get_train_test_split(dataset)  # (X_train, y_train, X_test, y_test)
 
-    if model == 'all':
+    if model == "all":
         if RUN_GRID:
             run_model_grid_search(data_version, date_range, splits)
         else:
@@ -38,23 +44,42 @@ def train_p1_model(original_data: pd.DataFrame, data_version: str, date_range: d
     else:
         run_model(original_data, data_version, date_range, model, params, splits)
 
+
 def run_model(original_data, data_version, date_range, model, params, splits):
     if not TRAIN_CHALLENGER:
-        train_and_register(model, params, splits, "current", CHAMPION_ALIAS, data_version, date_range)
+        train_and_register(
+            model, params, splits, "current", CHAMPION_ALIAS, data_version, date_range
+        )
         return
 
     # Prueba A/B: champion entrena hasta agosto, challenger hasta septiembre; ambos se evalúan
     # en octubre 2026, el mes de la prueba A/B.
-    october = build_initial_dataset({"monthly": ["datos_abiertos_2026_10.csv"], "stations": STATIONS_DATA})
+    october = build_initial_dataset(
+        {"monthly": ["datos_abiertos_2026_10.csv"], "stations": STATIONS_DATA}
+    )
     dataset = create_p1_dataset(pd.concat([original_data, october], ignore_index=True))
 
     champion = get_train_test_split(dataset, "2026-09-01", "2026-11-01", test_start="2026-10-01")
     challenger = get_train_test_split(dataset, "2026-10-01", "2026-11-01")
 
-    train_and_register(model, params, champion, "champion", CHAMPION_ALIAS,
-                       data_version, {**date_range, "to": "2026_08"})
-    train_and_register(model, params, challenger, "challenger", "challenger",
-                       data_version, {**date_range, "to": "2026_09"})
+    train_and_register(
+        model,
+        params,
+        champion,
+        "champion",
+        CHAMPION_ALIAS,
+        data_version,
+        {**date_range, "to": "2026_08"},
+    )
+    train_and_register(
+        model,
+        params,
+        challenger,
+        "challenger",
+        "challenger",
+        data_version,
+        {**date_range, "to": "2026_09"},
+    )
 
 
 def train_and_register(model, params, splits, label, alias, data_version, date_range):
@@ -70,32 +95,62 @@ def validate_model_and_params(model: str, params: dict | None):
     if model != "all" and model not in P1_MODELS:
         raise ValueError(f"model debe ser {P1_MODELS} o 'all' (recibido: {model})")
     if model == "all" and params:
-        raise ValueError("params solo aplica a un modelo: usa -P model=ridge|random_forest|hist_gb")
+        raise ValueError(
+            "params solo aplica a un modelo: usa -P model=ridge|random_forest|hist_gb"
+        )
+
 
 def get_models():
     ordinal = lambda: OrdinalEncoder(handle_unknown="use_encoded_value", unknown_value=-1)
-    return  {
+    return {
         "ridge": {
-            "pipeline": lambda p: make_pipeline(OneHotEncoder(handle_unknown="ignore"), Ridge(random_state=SEED, **p)),
-            "grid": {'alpha': [1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0, 100.0], 'fit_intercept': [True, False], 'solver': ['auto', 'cholesky', 'sag', 'saga']},
-            "base": {'alpha': 100.0,
-                    'fit_intercept': False,
-                    'solver': 'sag'
-                    }
+            "pipeline": lambda p: make_pipeline(
+                OneHotEncoder(handle_unknown="ignore"), Ridge(random_state=SEED, **p)
+            ),
+            "grid": {
+                "alpha": [1e-4, 1e-3, 1e-2, 0.1, 1.0, 10.0, 100.0],
+                "fit_intercept": [True, False],
+                "solver": ["auto", "cholesky", "sag", "saga"],
+            },
+            "base": {"alpha": 100.0, "fit_intercept": False, "solver": "sag"},
         },
         "random_forest": {
-            "pipeline": lambda p: make_pipeline(ordinal(), RandomForestRegressor(random_state=SEED, **p)),
-            "grid": {"min_samples_leaf": [5, 20, 50], "max_features": [0.5, 1.0], "max_samples": [0.3, 0.6], "n_jobs": [-1]},
-            "base": {"max_features": 0.5, "max_samples": 0.3, "min_samples_leaf": 50, "n_jobs": -1 }
+            "pipeline": lambda p: make_pipeline(
+                ordinal(), RandomForestRegressor(random_state=SEED, **p)
+            ),
+            "grid": {
+                "min_samples_leaf": [5, 20, 50],
+                "max_features": [0.5, 1.0],
+                "max_samples": [0.3, 0.6],
+                "n_jobs": [-1],
+            },
+            "base": {
+                "max_features": 0.5,
+                "max_samples": 0.3,
+                "min_samples_leaf": 50,
+                "n_jobs": -1,
+            },
         },
         "hist_gb": {
-            "pipeline": lambda p: make_pipeline(ordinal(), HistGradientBoostingRegressor(random_state=SEED, **p)),
-            "grid": {"learning_rate": [0.05, 0.1], "max_leaf_nodes": [31, 63], "min_samples_leaf": [20, 100],
-                     "loss": ["squared_error", "poisson"]},
-            "base": {"learning_rate": 0.05, "loss": "poisson", "max_leaf_nodes":31, "min_samples_leaf": 100}
+            "pipeline": lambda p: make_pipeline(
+                ordinal(), HistGradientBoostingRegressor(random_state=SEED, **p)
+            ),
+            "grid": {
+                "learning_rate": [0.05, 0.1],
+                "max_leaf_nodes": [31, 63],
+                "min_samples_leaf": [20, 100],
+                "loss": ["squared_error", "poisson"],
+            },
+            "base": {
+                "learning_rate": 0.05,
+                "loss": "poisson",
+                "max_leaf_nodes": 31,
+                "min_samples_leaf": 100,
+            },
         },
     }
-    
+
+
 def run_model_grid_search(data_version, date_range, splits):
     models = get_models()
     with mlflow.start_run(run_name="p1_grid_model_comparison"):
@@ -105,6 +160,7 @@ def run_model_grid_search(data_version, date_range, splits):
 
             with mlflow.start_run(run_name=name, nested=True):
                 tune_model(name, spec, splits)
+
 
 def run_model_comparison(data_version, date_range, splits):
     models = get_models()
@@ -143,16 +199,16 @@ def register_model(name, run_id, model, splits, alias):
             input_example=X_test.head(5),
             registered_model_name=REGISTERED_MODEL_NAME,
             skops_trusted_types=[
-                'sklearn.tree._tree.Tree',
-                'sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor',
-            ]
+                "sklearn.tree._tree.Tree",
+                "sklearn.ensemble._hist_gradient_boosting.predictor.TreePredictor",
+            ],
         )
     version = info.registered_model_version
     MlflowClient().set_registered_model_alias(REGISTERED_MODEL_NAME, alias, version)
     logger.success(f"P1: {name} registrado como {REGISTERED_MODEL_NAME} v{version} @{alias}")
     return version
 
-        
+
 def tune_model(name, spec, splits):
     mlflow.set_tags({"modelo": name, "stage_of_work": "candidate"})
     pipeline = spec["pipeline"]({})
@@ -176,6 +232,7 @@ def tune_model(name, spec, splits):
     mlflow.log_metric("best_cv_rmse", -search.best_score_)
     eval_model(best_model, splits)
 
+
 def train_and_test_model(name, params, model, splits):
     logger.info(f"P1 {name}: entrenando con {params}")
     mlflow.log_params(params)
@@ -194,7 +251,7 @@ def eval_model(model, splits):
     train_predictions = np.maximum(0, model.predict(X_train))
     test_predictions = np.maximum(0, model.predict(X_test))
 
-    log_metrics(y_train, train_predictions, 'train')
-    log_metrics(y_test, test_predictions, 'test')
+    log_metrics(y_train, train_predictions, "train")
+    log_metrics(y_test, test_predictions, "test")
     plot_prediction_vs_real_data(y_test, test_predictions)
     return float(np.sqrt(np.mean((y_test.to_numpy() - test_predictions) ** 2)))
