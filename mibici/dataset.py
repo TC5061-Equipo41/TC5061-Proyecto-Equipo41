@@ -31,19 +31,21 @@ RENAMED_STATION_COLS = {
     "dcapacity": "No_bicis",
 }
 
+
 def interim_dataset_path(data_metadata: dict) -> Path:
     """Build the path for the intermediate dataset."""
     data_range = data_metadata["data_range"]
-    suffix = f'{data_range["from"]}-{data_range["to"]}'
+    suffix = f"{data_range['from']}-{data_range['to']}"
     return INTERIM_DATA_DIR / f"joined_trips_stations-{suffix}.parquet"
+
 
 def build_initial_dataset(
     data_metadata: dict,
     save_interim: bool = False,
 ) -> pd.DataFrame:
     """Limpia y une los viajes con los metadatos de las estaciones; opcionalmente guarda el resultado en CSV."""
-    csv_names = data_metadata['monthly']
-    stations_csv_name = data_metadata['stations']
+    csv_names = data_metadata["monthly"]
+    stations_csv_name = data_metadata["stations"]
 
     trips = load_monthly_trips(csv_names)
     stations = get_clean_stations_df(stations_csv_name)
@@ -75,9 +77,7 @@ def load_monthly_trips(csv_names: list[str]) -> pd.DataFrame:
 
         frames.append(clean_trips(frame))
 
-    return delete_duplicates_and_reset_idx(
-        pd.concat(frames, ignore_index=True)
-    )
+    return delete_duplicates_and_reset_idx(pd.concat(frames, ignore_index=True))
 
 
 def clean_trips(frame: pd.DataFrame) -> pd.DataFrame:
@@ -98,16 +98,12 @@ def clean_trips(frame: pd.DataFrame) -> pd.DataFrame:
     return create_minutes_column(result)
 
 
-
-
 def get_clean_stations_df(station_df_name: str) -> pd.DataFrame:
     """Lee los metadatos de las estaciones, renombra sus columnas y excluye los identificadores reemplazados explícitamente."""
     stations = pd.read_csv(RAW_DATA_DIR / station_df_name)
     stations = stations.rename(columns=RENAMED_STATION_COLS)
 
-    replaced = stations["Estacion_Id"].isin(
-        DEPRECATED_STATION_IDS_REPLACEMENTS.keys()
-    )
+    replaced = stations["Estacion_Id"].isin(DEPRECATED_STATION_IDS_REPLACEMENTS.keys())
     return stations.loc[~replaced].copy()
 
 
@@ -115,13 +111,11 @@ def join_station_metadata(
     trips: pd.DataFrame,
     stations: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Reemplaza los identificadores alternativos de las estaciones y añade sus metadatos con prefijos de origen y destino."""    
+    """Reemplaza los identificadores alternativos de las estaciones y añade sus metadatos con prefijos de origen y destino."""
     result = trips.copy()
     station_columns = ["Origen_Id", "Destino_Id"]
 
-    result[station_columns] = result[station_columns].replace(
-        DEPRECATED_STATION_IDS_REPLACEMENTS
-    )
+    result[station_columns] = result[station_columns].replace(DEPRECATED_STATION_IDS_REPLACEMENTS)
 
     for station_column, prefix in (
         ("Origen_Id", "Origen"),
@@ -129,11 +123,7 @@ def join_station_metadata(
     ):
         metadata = stations.rename(
             columns={
-                column: (
-                    station_column
-                    if column == "Estacion_Id"
-                    else f"{prefix}_{column}"
-                )
+                column: (station_column if column == "Estacion_Id" else f"{prefix}_{column}")
                 for column in stations.columns
             }
         )
@@ -159,8 +149,6 @@ def sha256_file(path: Path, chunk_size: int = 1 << 20) -> str:
         for chunk in iter(lambda: fh.read(chunk_size), b""):
             digest.update(chunk)
     return digest.hexdigest()
-
-
 
 
 def describe_raw_file(path: Path, date_column: str | None = "Inicio_del_viaje") -> dict:
@@ -256,6 +244,7 @@ def run_ingest(data_metadata: dict = DATA_METADATA) -> tuple[pd.DataFrame, dict]
         f"manifiesto en {path.relative_to(PROJ_ROOT)}"
     )
     return dataset, manifest
+
 
 def _read_csv_any_encoding(path: Path, **kwargs) -> tuple[pd.DataFrame, str]:
     """Lee un CSV en UTF-8 y, si falla, en CP1252 (mismo criterio que ``load_monthly_trips``)."""

@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 import numpy as np
@@ -10,15 +9,14 @@ if not hasattr(np, "Inf"):
 if not hasattr(np, "NaN"):
     np.NaN = np.nan
 
-import pandas as pd
 from deepchecks.tabular import Dataset
 from deepchecks.tabular.suites import data_integrity
+import pandas as pd
 
 from mibici.config import DATA_METADATA
 from mibici.dataset import load_base_dataset
 from mibici.p1.dataset import create_p1_dataset
 from mibici.p2.dataset import create_p2_dataset
-
 
 # --------------------------------------------------
 # Rutas y configuración
@@ -26,12 +24,7 @@ from mibici.p2.dataset import create_p2_dataset
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-P3_DATA_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "processed"
-    / "p3_station_features.csv"
-)
+P3_DATA_PATH = PROJECT_ROOT / "data" / "processed" / "p3_station_features.csv"
 
 REPORT_DIR = PROJECT_ROOT / "reports" / "validation"
 
@@ -60,6 +53,7 @@ P2_TARGET = "target_risk"
 # Funciones de validación
 # --------------------------------------------------
 
+
 def run_validation(
     df: pd.DataFrame,
     project_name: str,
@@ -72,26 +66,15 @@ def run_validation(
     """Ejecuta Deepchecks y genera un reporte HTML."""
 
     if df.empty:
-        raise ValueError(
-            f"El dataset de {project_name} está vacío."
-        )
+        raise ValueError(f"El dataset de {project_name} está vacío.")
 
     if label is not None and label not in df.columns:
-        raise ValueError(
-            f"No se encontró la variable objetivo "
-            f"'{label}' en {project_name}."
-        )
+        raise ValueError(f"No se encontró la variable objetivo '{label}' en {project_name}.")
 
-    missing_columns = [
-        col for col in categorical_features
-        if col not in df.columns
-    ]
+    missing_columns = [col for col in categorical_features if col not in df.columns]
 
     if missing_columns:
-        raise ValueError(
-            f"Faltan columnas categóricas en {project_name}: "
-            f"{missing_columns}"
-        )
+        raise ValueError(f"Faltan columnas categóricas en {project_name}: {missing_columns}")
 
     print(f"\n{'=' * 60}")
     print(f"VALIDACIÓN {project_name}")
@@ -145,10 +128,7 @@ def run_validation(
 
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
-    report_path = (
-        REPORT_DIR
-        / f"{project_name.lower()}_data_integrity.html"
-    )
+    report_path = REPORT_DIR / f"{project_name.lower()}_data_integrity.html"
 
     # DeepChecks no sobrescribe: si el archivo existe crea "<nombre> (1).html". Se borra antes
     # para que cada ejecución reemplace el reporte en lugar de acumular copias.
@@ -192,10 +172,10 @@ def validate_p1(base_data: pd.DataFrame):
     )
 
 
-
 # --------------------------------------------------
 # P2: Clasificación de riesgo de estaciones
 # --------------------------------------------------
+
 
 def validate_p2(base_data: pd.DataFrame):
     """Valida la calidad del dataset de P2."""
@@ -217,9 +197,7 @@ def validate_p2(base_data: pd.DataFrame):
 
     # Se conservan los identificadores para distinguir
     # cada observación de estación y hora.
-    df = df[
-        ["station_id", "fecha_hora"] + P2_FEATURES + [P2_TARGET]
-    ].copy()
+    df = df[["station_id", "fecha_hora"] + P2_FEATURES + [P2_TARGET]].copy()
 
     run_validation(
         df=df,
@@ -241,15 +219,14 @@ def validate_p2(base_data: pd.DataFrame):
 # P3: Características de estaciones
 # --------------------------------------------------
 
+
 def validate_p3():
     """Valida la calidad del dataset de P3."""
 
     print("\nLoading P3 station features...")
 
     if not P3_DATA_PATH.exists():
-        raise FileNotFoundError(
-            f"No se encontró el archivo: {P3_DATA_PATH}"
-        )
+        raise FileNotFoundError(f"No se encontró el archivo: {P3_DATA_PATH}")
 
     df = pd.read_csv(P3_DATA_PATH)
 
@@ -264,6 +241,7 @@ def validate_p3():
 # --------------------------------------------------
 # Ejecución principal
 # --------------------------------------------------
+
 
 def main():
     """Ejecuta las validaciones de P1, P2 y P3."""

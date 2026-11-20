@@ -101,8 +101,17 @@ def test_detect_secrets_finds_nothing_new():
     pytest.importorskip("detect_secrets")
     files = [f for f in _git("ls-files").splitlines() if (ROOT / f).is_file()]
     result = subprocess.run(  # nosec B603 - intérprete actual y argumentos fijos
-        [sys.executable, "-m", "detect_secrets.pre_commit_hook", "--baseline",
-         ".secrets.baseline", *files],
-        cwd=ROOT, capture_output=True, text=True, check=False,
+        [
+            sys.executable,
+            "-m",
+            "detect_secrets.pre_commit_hook",
+            "--baseline",
+            ".secrets.baseline",
+            *files,
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr

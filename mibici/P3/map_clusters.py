@@ -1,5 +1,3 @@
-
-
 import folium
 import pandas as pd
 
@@ -17,12 +15,11 @@ def main():
 
     center = [df["Latitud"].mean(), df["Longitud"].mean()]
     mapa = folium.Map(
-    location=center,
-    zoom_start=13,
-    tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
-    attr="© OpenTopoMap contributors",
+        location=center,
+        zoom_start=13,
+        tiles="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+        attr="© OpenTopoMap contributors",
     )
-    
 
     colors = {0: "blue", 1: "orange"}
 

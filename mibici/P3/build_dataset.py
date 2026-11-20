@@ -1,4 +1,4 @@
-﻿from loguru import logger
+from loguru import logger
 import pandas as pd
 
 from mibici.config import (
@@ -8,7 +8,6 @@ from mibici.config import (
 )
 from mibici.dataset import (
     clean_trips,
-    delete_duplicates_and_reset_idx,
     get_clean_stations_df,
     join_station_metadata,
 )
@@ -29,6 +28,7 @@ MONTHLY_FILES = [
     "datos_abiertos_2026_09.csv",
 ]
 
+
 def main():
     frames = []
 
@@ -47,19 +47,14 @@ def main():
     stations = get_clean_stations_df(STATIONS_DATA)
     result = join_station_metadata(trips, stations)
 
-    output_path = (
-        INTERIM_DATA_DIR
-        / "joined_trips_stations-2026_09-2025_10.csv"
-    )
+    output_path = INTERIM_DATA_DIR / "joined_trips_stations-2026_09-2025_10.csv"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output_path, index=False)
 
     logger.success(f"Dataset anual guardado: {output_path}")
     print(f"Viajes procesados: {len(result):,}")
-    print(
-        result[["Inicio_del_viaje", "Fin_del_viaje"]]
-        .agg(["min", "max"])
-    )
+    print(result[["Inicio_del_viaje", "Fin_del_viaje"]].agg(["min", "max"]))
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from loguru import logger
@@ -12,8 +11,7 @@ app = typer.Typer()
 
 @app.command()
 def main(
-    input_path: Path = INTERIM_DATA_DIR
-    / "joined_trips_stations-2026_09-2025_10.csv",
+    input_path: Path = INTERIM_DATA_DIR / "joined_trips_stations-2026_09-2025_10.csv",
     output_path: Path = PROCESSED_DATA_DIR / "p3_station_features.csv",
 ):
     """Generate station-level usage features for P3 clustering."""
@@ -39,9 +37,7 @@ def main(
         parse_dates=["Inicio_del_viaje"],
     )
 
-    trips = trips.dropna(
-        subset=["Inicio_del_viaje", "Origen_Id", "Destino_Id"]
-    )
+    trips = trips.dropna(subset=["Inicio_del_viaje", "Origen_Id", "Destino_Id"])
 
     # Departure features, including time-of-day and weekend patterns.
     trips["hora"] = trips["Inicio_del_viaje"].dt.hour
@@ -86,11 +82,8 @@ def main(
     output_path.parent.mkdir(parents=True, exist_ok=True)
     features.to_csv(output_path, index=False)
 
-    logger.success(
-        f"Generated {len(features)} station records at {output_path}"
-    )
+    logger.success(f"Generated {len(features)} station records at {output_path}")
 
 
 if __name__ == "__main__":
     app()
-

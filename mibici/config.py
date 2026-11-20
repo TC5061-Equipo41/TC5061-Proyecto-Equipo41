@@ -21,28 +21,32 @@ MODELS_DIR = PROJ_ROOT / "models"
 
 REPORTS_DIR = PROJ_ROOT / "reports"
 FIGURES_DIR = REPORTS_DIR / "figures"
-CURRENT_MONTH_DATA = ['datos_abiertos_2026_09.csv']
-THREE_MONTH_DATA = ['datos_abiertos_2026_08.csv', 'datos_abiertos_2026_07.csv', 'datos_abiertos_2026_06.csv']
+CURRENT_MONTH_DATA = ["datos_abiertos_2026_09.csv"]
+THREE_MONTH_DATA = [
+    "datos_abiertos_2026_08.csv",
+    "datos_abiertos_2026_07.csv",
+    "datos_abiertos_2026_06.csv",
+]
 YEARLY_DATA = [
-        'datos_abiertos_2026_09.csv', 
-        'datos_abiertos_2026_08.csv', 
-        'datos_abiertos_2026_07.csv', 
-        'datos_abiertos_2026_06.csv',
-        'datos_abiertos_2026_05.csv', 
-        'datos_abiertos_2026_04.csv', 
-        'datos_abiertos_2026_03.csv', 
-        'datos_abiertos_2026_02.csv',
-        'datos_abiertos_2026_01.csv',
-        'datos_abiertos_2025_12.csv', 
-        'datos_abiertos_2025_11.csv',
-        'datos_abiertos_2025_10.csv',
-    ]
-STATIONS_DATA = 'nomenclatura_2026_09.csv'
+    "datos_abiertos_2026_09.csv",
+    "datos_abiertos_2026_08.csv",
+    "datos_abiertos_2026_07.csv",
+    "datos_abiertos_2026_06.csv",
+    "datos_abiertos_2026_05.csv",
+    "datos_abiertos_2026_04.csv",
+    "datos_abiertos_2026_03.csv",
+    "datos_abiertos_2026_02.csv",
+    "datos_abiertos_2026_01.csv",
+    "datos_abiertos_2025_12.csv",
+    "datos_abiertos_2025_11.csv",
+    "datos_abiertos_2025_10.csv",
+]
+STATIONS_DATA = "nomenclatura_2026_09.csv"
 
 DATA_METADATA = {
-    'monthly': YEARLY_DATA,
-    'stations': STATIONS_DATA,
-    'data_range': {'from': '2025_10', 'to': '2026_09'}
+    "monthly": YEARLY_DATA,
+    "stations": STATIONS_DATA,
+    "data_range": {"from": "2025_10", "to": "2026_09"},
 }
 
 # ---------------------------------------------------------------------------

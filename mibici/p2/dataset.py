@@ -58,18 +58,14 @@ def get_capacity_columns(df: pd.DataFrame):
             "Destino_No_bicis",
         )
 
-    raise ValueError(
-        "No se encontraron columnas de capacidad de estaciones."
-    )
+    raise ValueError("No se encontraron columnas de capacidad de estaciones.")
 
 
 def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
     """Construye una tabla por estación y hora."""
 
     departures = (
-        df.assign(
-            fecha_hora=df["Inicio_del_viaje"].dt.floor("h")
-        )
+        df.assign(fecha_hora=df["Inicio_del_viaje"].dt.floor("h"))
         .groupby(["Origen_Id", "fecha_hora"])
         .size()
         .rename("departures")
@@ -78,9 +74,7 @@ def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
     )
 
     arrivals = (
-        df.assign(
-            fecha_hora=df["Fin_del_viaje"].dt.floor("h")
-        )
+        df.assign(fecha_hora=df["Fin_del_viaje"].dt.floor("h"))
         .groupby(["Destino_Id", "fecha_hora"])
         .size()
         .rename("arrivals")
@@ -88,22 +82,16 @@ def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
         .rename(columns={"Destino_Id": "station_id"})
     )
 
-    origin_capacity_col, destination_capacity_col = (
-        get_capacity_columns(df)
-    )
+    origin_capacity_col, destination_capacity_col = get_capacity_columns(df)
 
-    origin_capacity = df[
-        ["Origen_Id", origin_capacity_col]
-    ].rename(
+    origin_capacity = df[["Origen_Id", origin_capacity_col]].rename(
         columns={
             "Origen_Id": "station_id",
             origin_capacity_col: "capacity",
         }
     )
 
-    destination_capacity = df[
-        ["Destino_Id", destination_capacity_col]
-    ].rename(
+    destination_capacity = df[["Destino_Id", destination_capacity_col]].rename(
         columns={
             "Destino_Id": "station_id",
             destination_capacity_col: "capacity",
@@ -126,9 +114,7 @@ def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
         .median()
     )
 
-    stations = stations[
-        stations["capacity"] > 0
-    ]
+    stations = stations[stations["capacity"] > 0]
 
     start = min(
         df["Inicio_del_viaje"].min(),
@@ -158,8 +144,7 @@ def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
     ).to_frame(index=False)
 
     station_hour = (
-        grid
-        .merge(
+        grid.merge(
             departures,
             on=["station_id", "fecha_hora"],
             how="left",
@@ -176,36 +161,19 @@ def build_station_hour(df: pd.DataFrame) -> pd.DataFrame:
         )
     )
 
-    station_hour[
-        ["departures", "arrivals"]
-    ] = (
-        station_hour[
-            ["departures", "arrivals"]
-        ]
-        .fillna(0)
-        .astype(int)
+    station_hour[["departures", "arrivals"]] = (
+        station_hour[["departures", "arrivals"]].fillna(0).astype(int)
     )
 
-    station_hour["net_flow"] = (
-        station_hour["arrivals"]
-        - station_hour["departures"]
-    )
+    station_hour["net_flow"] = station_hour["arrivals"] - station_hour["departures"]
 
-    station_hour["hour"] = (
-        station_hour["fecha_hora"].dt.hour
-    )
+    station_hour["hour"] = station_hour["fecha_hora"].dt.hour
 
-    station_hour["day_of_week"] = (
-        station_hour["fecha_hora"].dt.dayofweek
-    )
+    station_hour["day_of_week"] = station_hour["fecha_hora"].dt.dayofweek
 
-    station_hour["is_weekend"] = (
-        station_hour["day_of_week"] >= 5
-    ).astype(int)
+    station_hour["is_weekend"] = (station_hour["day_of_week"] >= 5).astype(int)
 
-    station_hour["month"] = (
-        station_hour["fecha_hora"].dt.month
-    )
+    station_hour["month"] = station_hour["fecha_hora"].dt.month
 
     return station_hour
 
@@ -253,19 +221,10 @@ def add_temporal_features(
         ]
     ].shift(-1)
 
-    df["future_net_flow"] = (
-        df["future_arrivals"]
-        - df["future_departures"]
-    )
+    df["future_net_flow"] = df["future_arrivals"] - df["future_departures"]
 
-    df["future_pressure"] = (
-        df["future_net_flow"].abs()
-        / df["capacity"]
-    )
+    df["future_pressure"] = df["future_net_flow"].abs() / df["capacity"]
 
-    df["target_risk"] = (
-        df["future_pressure"]
-        >= RISK_THRESHOLD
-    ).astype(int)
+    df["target_risk"] = (df["future_pressure"] >= RISK_THRESHOLD).astype(int)
 
     return df

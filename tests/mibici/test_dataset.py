@@ -36,6 +36,7 @@ def make_raw_trips(trip_ids, origins, destinations, month="07") -> pd.DataFrame:
         }
     )
 
+
 @pytest.fixture(autouse=True)
 def data_dirs(tmp_path, monkeypatch, raw_stations_df):
     raw_dir = tmp_path / "data" / "raw"
@@ -60,21 +61,23 @@ def data_dirs(tmp_path, monkeypatch, raw_stations_df):
 
     return {"raw": raw_dir, "interim": interim_dir, "root": tmp_path}
 
+
 @pytest.fixture(autouse=True)
 def mock_features(monkeypatch):
     FEATURE_FUNCTIONS = [
-    "create_minutes_column",
-    "delete_duplicates_and_nulls",
-    "delete_duplicates_and_reset_idx",
-    "delete_user_data_columns",
-    "transform_datetime_columns",
-]
+        "create_minutes_column",
+        "delete_duplicates_and_nulls",
+        "delete_duplicates_and_reset_idx",
+        "delete_user_data_columns",
+        "transform_datetime_columns",
+    ]
     mocks = {}
     for name in FEATURE_FUNCTIONS:
         mock = MagicMock(name=name, side_effect=lambda frame, *args, **kwargs: frame)
         monkeypatch.setattr(dataset, name, mock)
         mocks[name] = mock
     yield mocks
+
 
 # ---------------------------------------------------------------------------
 # interim_dataset_path
@@ -164,6 +167,7 @@ def test_clean_trips_chains_feature_functions(mock_features):
     mock_features["create_minutes_column"].assert_called_once_with(with_dates)
     assert result is with_minutes
 
+
 # ---------------------------------------------------------------------------
 # get_clean_stations_df
 # ---------------------------------------------------------------------------
@@ -173,6 +177,7 @@ def test_get_clean_stations_df_renames_and_excludes_replaced_ids():
     assert {"Estacion_Id", "Nombre", "Latitud", "Longitud", "No_bicis"} <= set(result.columns)
     assert not result["Estacion_Id"].isin([116, 138]).any()
     assert sorted(result["Estacion_Id"]) == [1, 2, 248, 249]
+
 
 # ---------------------------------------------------------------------------
 # join_station_metadata
@@ -219,6 +224,7 @@ def test_join_station_metadata_rejects_duplicated_stations(stations_df):
 
     with pytest.raises(pd.errors.MergeError):
         dataset.join_station_metadata(trips, duplicated)
+
 
 # ---------------------------------------------------------------------------
 # sha256_file
@@ -313,7 +319,6 @@ def test_compute_data_version_changes_with_content_or_range():
 
     assert base != other_hash
     assert base != other_range
-
 
 
 # ---------------------------------------------------------------------------
