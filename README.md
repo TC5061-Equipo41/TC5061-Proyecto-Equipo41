@@ -11,7 +11,6 @@ Dar respuesta a preguntas de negocio con técnicas de Machine Learning y DevOps 
 - P3: ¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
 
 ## Organización del Proyecto
-
 ```
 ├── LICENSE            <- Open-source license if one is chosen
 ├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
