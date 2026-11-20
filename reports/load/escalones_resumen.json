@@ -1,0 +1,102 @@
+{
+  "escenario": "escalones",
+  "duracion_s": 360,
+  "objetivo": {
+    "p95_ms": 500,
+    "error_pct": 1
+  },
+  "tramos": [
+    {
+      "usuarios": 10,
+      "rps": 8.1,
+      "p50_ms": 19.0,
+      "p95_ms": 39.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 17.6,
+      "cpu_api_max_pct": 36.5,
+      "mem_api_max_mib": 281.6,
+      "cpu_mlflow_media_pct": 2.0,
+      "mem_mlflow_max_mib": 2447.4
+    },
+    {
+      "usuarios": 25,
+      "rps": 19.9,
+      "p50_ms": 16.0,
+      "p95_ms": 38.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 33.7,
+      "cpu_api_max_pct": 45.9,
+      "mem_api_max_mib": 275.6,
+      "cpu_mlflow_media_pct": 1.4,
+      "mem_mlflow_max_mib": 2447.4
+    },
+    {
+      "usuarios": 50,
+      "rps": 39.7,
+      "p50_ms": 12.0,
+      "p95_ms": 32.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 48.1,
+      "cpu_api_max_pct": 69.2,
+      "mem_api_max_mib": 280.8,
+      "cpu_mlflow_media_pct": 1.0,
+      "mem_mlflow_max_mib": 2447.4
+    },
+    {
+      "usuarios": 100,
+      "rps": 79.1,
+      "p50_ms": 11.0,
+      "p95_ms": 37.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 77.4,
+      "cpu_api_max_pct": 112.7,
+      "mem_api_max_mib": 272.4,
+      "cpu_mlflow_media_pct": 0.9,
+      "mem_mlflow_max_mib": 2447.4
+    }
+  ],
+  "pico_rps": {
+    "rps": 81.3,
+    "usuarios": 100
+  },
+  "por_endpoint": [
+    {
+      "endpoint": "POST /predict/p1/abtest",
+      "peticiones": 3962,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 26.1,
+      "p50_ms": 23.0,
+      "p95_ms": 47.0,
+      "p99_ms": 89.0,
+      "rps_promedio": 11.0
+    },
+    {
+      "endpoint": "POST /predict/p3",
+      "peticiones": 9180,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 12.5,
+      "p50_ms": 9.0,
+      "p95_ms": 29.0,
+      "p99_ms": 63.0,
+      "rps_promedio": 25.5
+    },
+    {
+      "endpoint": "Aggregated",
+      "peticiones": 13142,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 16.6,
+      "p50_ms": 13.0,
+      "p95_ms": 39.0,
+      "p99_ms": 72.0,
+      "rps_promedio": 36.5
+    }
+  ],
+  "quiebre": null
+}

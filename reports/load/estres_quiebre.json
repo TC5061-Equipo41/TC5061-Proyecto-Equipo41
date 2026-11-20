@@ -1,0 +1,13 @@
+{
+  "criterio": "latencia",
+  "segundo": 682.0,
+  "usuarios": 460,
+  "p95_ms": 2100,
+  "error_pct": 0.0,
+  "rps_actual": 151.2,
+  "umbrales": {
+    "p95_ms": 2000.0,
+    "error_pct": 5.0
+  },
+  "timestamp": 1795189041.7744472
+}

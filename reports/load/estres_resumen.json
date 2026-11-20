@@ -1,0 +1,193 @@
+{
+  "escenario": "estres",
+  "duracion_s": 682,
+  "objetivo": {
+    "p95_ms": 500,
+    "error_pct": 1
+  },
+  "tramos": [
+    {
+      "usuarios": 20,
+      "rps": 16.2,
+      "p50_ms": 18.0,
+      "p95_ms": 43.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 31.1,
+      "cpu_api_max_pct": 66.5,
+      "mem_api_max_mib": 281.9,
+      "cpu_mlflow_media_pct": 1.7,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 70,
+      "rps": 51.6,
+      "p50_ms": 13.0,
+      "p95_ms": 41.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 61.1,
+      "cpu_api_max_pct": 95.2,
+      "mem_api_max_mib": 285.4,
+      "cpu_mlflow_media_pct": 0.9,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 120,
+      "rps": 90.8,
+      "p50_ms": 13.0,
+      "p95_ms": 57.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 94.9,
+      "cpu_api_max_pct": 132.3,
+      "mem_api_max_mib": 282.0,
+      "cpu_mlflow_media_pct": 0.9,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 170,
+      "rps": 126.7,
+      "p50_ms": 27.5,
+      "p95_ms": 130.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 148.4,
+      "cpu_api_max_pct": 200.7,
+      "mem_api_max_mib": 299.2,
+      "cpu_mlflow_media_pct": 0.9,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 220,
+      "rps": 146.1,
+      "p50_ms": 190.0,
+      "p95_ms": 440.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": true,
+      "cpu_api_media_pct": 194.8,
+      "cpu_api_max_pct": 216.9,
+      "mem_api_max_mib": 295.6,
+      "cpu_mlflow_media_pct": 0.8,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 270,
+      "rps": 148.2,
+      "p50_ms": 530.0,
+      "p95_ms": 780.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": false,
+      "cpu_api_media_pct": 196.3,
+      "cpu_api_max_pct": 219.1,
+      "mem_api_max_mib": 302.2,
+      "cpu_mlflow_media_pct": 0.7,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 320,
+      "rps": 147.3,
+      "p50_ms": 900.0,
+      "p95_ms": 1100.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": false,
+      "cpu_api_media_pct": 196.7,
+      "cpu_api_max_pct": 214.7,
+      "mem_api_max_mib": 304.5,
+      "cpu_mlflow_media_pct": 0.8,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 370,
+      "rps": 146.5,
+      "p50_ms": 1200.0,
+      "p95_ms": 1500.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": false,
+      "cpu_api_media_pct": 195.7,
+      "cpu_api_max_pct": 214.4,
+      "mem_api_max_mib": 305.4,
+      "cpu_mlflow_media_pct": 0.8,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 420,
+      "rps": 142.2,
+      "p50_ms": 1700.0,
+      "p95_ms": 1900.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": false,
+      "cpu_api_media_pct": 193.3,
+      "cpu_api_max_pct": 211.1,
+      "mem_api_max_mib": 307.9,
+      "cpu_mlflow_media_pct": 1.0,
+      "mem_mlflow_max_mib": 2448.4
+    },
+    {
+      "usuarios": 450,
+      "rps": 145.4,
+      "p50_ms": 1800.0,
+      "p95_ms": 2100.0,
+      "error_pct": 0.0,
+      "cumple_objetivo": false,
+      "cpu_api_media_pct": 195.5,
+      "cpu_api_max_pct": 217.2,
+      "mem_api_max_mib": 309.1,
+      "cpu_mlflow_media_pct": 0.8,
+      "mem_mlflow_max_mib": 2449.4
+    }
+  ],
+  "pico_rps": {
+    "rps": 151.6,
+    "usuarios": 230
+  },
+  "por_endpoint": [
+    {
+      "endpoint": "POST /predict/p1/abtest",
+      "peticiones": 24347,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 804.6,
+      "p50_ms": 720.0,
+      "p95_ms": 1900.0,
+      "p99_ms": 2200.0,
+      "rps_promedio": 35.7
+    },
+    {
+      "endpoint": "POST /predict/p3",
+      "peticiones": 55721,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 681.5,
+      "p50_ms": 550.0,
+      "p95_ms": 1800.0,
+      "p99_ms": 2000.0,
+      "rps_promedio": 81.7
+    },
+    {
+      "endpoint": "Aggregated",
+      "peticiones": 80068,
+      "fallas": 0,
+      "error_pct": 0.0,
+      "promedio_ms": 718.9,
+      "p50_ms": 600.0,
+      "p95_ms": 1800.0,
+      "p99_ms": 2100.0,
+      "rps_promedio": 117.4
+    }
+  ],
+  "quiebre": {
+    "criterio": "latencia",
+    "segundo": 682.8,
+    "usuarios": 460,
+    "p95_ms": 2100,
+    "error_pct": 0.0,
+    "rps_actual": 151.2,
+    "umbrales": {
+      "p95_ms": 2000.0,
+      "error_pct": 5.0
+    },
+    "timestamp": 1795189041.7744472,
+    "usuarios_activos": 460
+  }
+}

@@ -516,9 +516,7 @@ make drift                                     # referencia 2025_10:2026_09 vs a
 make drift REFERENCE=2025_10:2025_10 CURRENT=2026_10:2026_10   # control estacional
 ```
 
-Resultado: análisis de seguridad completado y reporte HTML generado.
-![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
-## Actividad 9. Despliegue de servicios con Docker Compose
+
 Genera en `reports/drift/` dos reportes de Evidently 0.7 (`DataDriftPreset` y `DataSummaryPreset`)
 y un resumen:
 
@@ -615,6 +613,8 @@ modelo, entrenado con totales anuales, asigna todas las estaciones al grupo de b
 | Reporte de viajes (Evidently)          | ![drift viajes](reports/Evidence/drift_trips.png)      |
 | Reporte de estaciones / P3 (Evidently) | ![drift P3](reports/Evidence/drift_p3.png)             |
 
+## Despliegue de servicios con Docker Compose
+
 ### Objetivo
 
 Orquestar los servicios de la API de predicción de MiBici y el servidor MLflow mediante Docker Compose, permitiendo construir y ejecutar ambos servicios de manera conjunta y reproducible.
@@ -626,14 +626,14 @@ La solución está compuesta por dos servicios:
 | Servicio | Descripción | Puerto |
 |---|---|---|
 | `mlflow` | Servidor de seguimiento de experimentos y Model Registry. Utiliza SQLite como backend y almacena los artefactos del modelo. | 5000 |
-| `api` | API desarrollada con FastAPI y Uvicorn para consultar el modelo P3 y generar predicciones. | 8000 |
+| `api` | API desarrollada con FastAPI y Uvicorn que sirve P3 y la prueba A/B de P1, con los modelos exportados del registry empaquetados en la imagen. Incluye un `healthcheck` sobre `/health`. | 8000 |
 
-La API se comunica con MLflow mediante la dirección interna `http://mlflow:5000`, utilizando la red creada automáticamente por Docker Compose.
+La API recibe `MLFLOW_TRACKING_URI=http://mlflow:5000` (red interna de Compose), pero predice con los modelos copiados en la imagen: MLflow no participa en cada petición.
 
 ### Archivos de configuración
 
-- `Dockerfile`: construye la imagen de la API utilizando Python 3.14, instala las dependencias del proyecto y ejecuta la aplicación mediante Uvicorn.
-- `Dockerfile.mlflow`: construye la imagen del servidor MLflow utilizando Python 3.14 e instala MLflow 3.17.0.
+- `Dockerfile`: construye la imagen de la API con Python 3.14, instala las dependencias, copia la carpeta `models/` con los tres modelos exportados (`p3_model`, `p1_current`, `p1_challenger`), define las variables `P3_*` y `P1_*` y ejecuta la aplicación con Uvicorn.
+- `Dockerfile.mlflow`: construye la imagen del servidor MLflow utilizando Python 3.14 e instala MLflow 3.17.2 (versión corregida de CVE-2026-53995).
 - `docker-compose.yml`: define los dos servicios, sus puertos, dependencias, variables de entorno y volúmenes persistentes.
 
 Los volúmenes permiten conservar la base de datos `mlflow-docker.db` y los artefactos almacenados en `mlruns` fuera del ciclo de vida de los contenedores.
@@ -642,7 +642,14 @@ Los volúmenes permiten conservar la base de datos `mlflow-docker.db` y los arte
 
 - Docker Desktop instalado y en ejecución.
 - Docker Compose disponible mediante el comando `docker compose`.
-- Repositorio MiBici descargado localmente.
+- Modelos exportados del registry. La imagen copia `models/`; sin ellos se construye igual (así
+  funciona la CI), pero la API no arranca:
+  ```bash
+  export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+  python -m mibici.api.scripts.export_model
+  ```
+- El archivo `mlflow-docker.db` creado (`touch mlflow-docker.db`); si no existe, Docker crea una
+  carpeta con ese nombre y MLflow no arranca. `make load-up` hace ambos pasos.
 
 ### Construcción e inicio de los servicios
 
@@ -669,15 +676,12 @@ Una vez iniciados los contenedores, se puede acceder a los siguientes recursos:
 | Interfaz de MLflow | http://localhost:5000 |
 | Documentación interactiva de la API (Swagger) | http://localhost:8000/docs |
 | Health Check de la API | http://localhost:8000/health |
-| Información del modelo cargado | http://localhost:8000/model-info |
 
-El endpoint `/health` permite verificar el estado de la API y confirmar si el modelo está cargado correctamente.
-
-El endpoint `/model-info` permite consultar el nombre del modelo, su versión y la dirección del servidor MLflow utilizado.
+El endpoint `/health` indica si cada modelo (`p3`, `p1_current`, `p1_challenger`) quedó cargado. `docker compose ps` muestra el contenedor `mibici-api` como `healthy` cuando responde.
 
 ### Ejecución de predicciones
 
-La API proporciona el endpoint `POST /predict` para realizar predicciones con el modelo P3.
+La API proporciona `POST /predict/p3` (grupo de una estación) y `POST /predict/p1/abtest` (viajes por estación, hora y día, prueba A/B de P1). Los ejemplos de petición y respuesta están en la sección "Correr FastAPI con Docker".
 
 Se puede utilizar la interfaz Swagger disponible en:
 
@@ -720,11 +724,134 @@ Se verificó el funcionamiento de los servicios mediante las siguientes comproba
 - Construcción de las imágenes Docker.
 - Inicio correcto de los contenedores de MLflow y la API.
 - Disponibilidad de la interfaz web de MLflow.
-- Respuesta satisfactoria del endpoint `/health`, confirmando que el modelo está cargado.
-- Consulta de la información del modelo mediante `/model-info`.
-- Ejecución de una solicitud de predicción mediante `/predict`, obteniendo una respuesta HTTP 200.
+- Respuesta satisfactoria del endpoint `/health`, confirmando que los tres modelos están cargados (contenedor `healthy`).
+- Ejecución de solicitudes de predicción a `/predict/p3` y `/predict/p1/abtest`, obteniendo respuestas HTTP 200.
 
 Con esta implementación, los servicios de MLflow y predicción pueden iniciarse conjuntamente mediante un único comando de Docker Compose, facilitando la reproducibilidad y ejecución del sistema.
+## Pruebas de carga (Locust) y uso de recursos
+
+Objetivo: medir cómo responde la API en contenedores cuando muchos usuarios piden predicciones al
+mismo tiempo, y qué recursos consume.
+
+### Diseño de la prueba
+
+**Usuario simulado** (`load/locustfile.py`): espera entre 0,5 y 2 s entre peticiones, como un
+cliente real, y reparte su carga entre los dos endpoints de predicción:
+
+| Endpoint | Peso | Datos de cada petición (`load/payloads.py`) |
+|---|---|---|
+| `POST /predict/p3` | 70 % | Una estación real de `p3_station_features.csv`, distinta en cada petición |
+| `POST /predict/p1/abtest` | 30 % | Estación real, hora entre 5 y 23, día de la semana y viajes observados al azar |
+
+Una petición cuenta como exitosa solo si responde `200` y trae la predicción. Las pruebas de
+`tests/load/` verifican que todos los datos generados pasan la validación Pydantic de la API, para
+no medir respuestas `422`.
+
+**Objetivo de servicio**, definido antes de correr: **p95 ≤ 500 ms** y **errores ≤ 1 %**.
+
+**Dos escenarios** (`LoadTestShape`):
+
+| Escenario | Carga | Pregunta que responde |
+|---|---|---|
+| `escalones` | 10 → 25 → 50 → 100 usuarios, 90 s cada escalón; se descartan los primeros 20 s de cada uno | ¿Cuántos usuarios aguanta la API cumpliendo el objetivo, en régimen estable? |
+| `estres` | +10 usuarios cada 15 s (hasta 500); **se detiene solo** cuando el p95 supera 2.000 ms o los errores superan 5 % en 3 mediciones seguidas (cada 5 s) | ¿Dónde se rompe y cómo falla: con latencia o con errores? |
+
+**Recursos**: durante cada escenario, `load/monitor.py` lee `docker stats` (o `podman stats`) de
+`mibici-api` y `mibici-mlflow` en continuo (~1 muestra por segundo) y guarda CPU y memoria. El
+100 % de CPU equivale a un núcleo.
+
+### Cómo correrla
+
+```bash
+python -m mibici.api.scripts.export_model   # con MLFLOW_TRACKING_URI apuntando al registry
+make load-up                                # touch mlflow-docker.db + docker compose up -d --build
+make load SCENARIO=escalones                # ~6 min
+make load SCENARIO=estres                   # hasta el quiebre
+make load-down
+```
+
+Cada escenario deja en `reports/load/`:
+
+| Archivo | Contenido |
+|---|---|
+| `<escenario>_locust.html` | Reporte de Locust: estadísticas por endpoint y gráficas interactivas |
+| `<escenario>_desempeno.png` | Usuarios, peticiones por segundo, latencia p50/p95 (total y por endpoint) y tasa de error |
+| `<escenario>_recursos.png` | CPU y memoria de cada contenedor junto al número de usuarios |
+| `<escenario>_resumen.json` | Métricas por tramo, totales por endpoint y, en estrés, el punto de quiebre |
+
+Los CSV crudos de Locust y de `docker stats` también quedan en esa carpeta, pero no se versionan:
+las pruebas de higiene prohíben archivos `.csv` en el repositorio.
+
+### Resultados e interpretación
+
+<!-- resultados-carga:inicio -->
+Entorno de la prueba: 8 CPU y 3.8 GB de memoria asignados a Docker (Docker Desktop). Contenedores levantados con `docker compose up -d`.
+Ambos escenarios usan la misma mezcla de peticiones (70 % P3, 30 % P1) y el mismo objetivo de
+servicio.
+
+**Escenario incremental (`escalones`)**: métricas de cada escalón en régimen estable.
+
+| Usuarios | Peticiones/s | p50 (ms) | p95 (ms) | Errores | CPU API (media) | Memoria API (máx.) | CPU MLflow (media) | Objetivo |
+|---|---|---|---|---|---|---|---|---|
+| 10 | 8,1 | 19 | 39 | 0,00 % | 18 % | 282 MiB | 2,0 % | ✅ cumple |
+| 25 | 19,9 | 16 | 38 | 0,00 % | 34 % | 276 MiB | 1,4 % | ✅ cumple |
+| 50 | 39,7 | 12 | 32 | 0,00 % | 48 % | 281 MiB | 1,0 % | ✅ cumple |
+| 100 | 79,1 | 11 | 37 | 0,00 % | 77 % | 272 MiB | 0,9 % | ✅ cumple |
+
+Totales del escenario por endpoint:
+
+| Endpoint | Peticiones | Errores | p50 (ms) | p95 (ms) | p99 (ms) |
+|---|---|---|---|---|---|
+| `POST /predict/p1/abtest` | 3.962 | 0,00 % | 23 | 47 | 89 |
+| `POST /predict/p3` | 9.180 | 0,00 % | 9 | 29 | 63 |
+| **Total** | 13.142 | 0,00 % | 13 | 39 | 72 |
+
+**Escenario de estrés (`estres`)**: métricas por tramo de 50 usuarios.
+
+| Usuarios | Peticiones/s | p50 (ms) | p95 (ms) | Errores | CPU API (media) | Memoria API (máx.) | CPU MLflow (media) | Objetivo |
+|---|---|---|---|---|---|---|---|---|
+| 20 | 16,2 | 18 | 43 | 0,00 % | 31 % | 282 MiB | 1,7 % | ✅ cumple |
+| 70 | 51,6 | 13 | 41 | 0,00 % | 61 % | 285 MiB | 0,9 % | ✅ cumple |
+| 120 | 90,8 | 13 | 57 | 0,00 % | 95 % | 282 MiB | 0,9 % | ✅ cumple |
+| 170 | 126,7 | 28 | 130 | 0,00 % | 148 % | 299 MiB | 0,9 % | ✅ cumple |
+| 220 | 146,1 | 190 | 440 | 0,00 % | 195 % | 296 MiB | 0,8 % | ✅ cumple |
+| 270 | 148,2 | 530 | 780 | 0,00 % | 196 % | 302 MiB | 0,7 % | ❌ no cumple |
+| 320 | 147,3 | 900 | 1.100 | 0,00 % | 197 % | 304 MiB | 0,8 % | ❌ no cumple |
+| 370 | 146,5 | 1.200 | 1.500 | 0,00 % | 196 % | 305 MiB | 0,8 % | ❌ no cumple |
+| 420 | 142,2 | 1.700 | 1.900 | 0,00 % | 193 % | 308 MiB | 1,0 % | ❌ no cumple |
+| 450 | 145,4 | 1.800 | 2.100 | 0,00 % | 196 % | 309 MiB | 0,8 % | ❌ no cumple |
+
+**Interpretación**
+
+- **Escenario incremental**: cumple el objetivo en todos los escalones. Con 100 usuarios responde 79 peticiones/s con p95 de 37 ms y 0 % de errores, y las peticiones por segundo crecen en proporción a los usuarios: la API todavía no está saturada.
+- **Capacidad dentro del objetivo**: hasta **~220 usuarios concurrentes** (~146 peticiones/s, p95 440 ms). Desde ~270 usuarios el p95 pasa de 500 ms.
+- **Saturación**: desde ~220 usuarios el rendimiento se estanca en **~146 peticiones/s** (pico de 152 con 230 usuarios) y la CPU de la API se nivela en **~196 %, es decir, ~2,0 núcleos**. Desde ahí, más usuarios no aumentan el rendimiento: solo alargan la cola, y la latencia crece casi en proporción (tiempo de respuesta ≈ usuarios / rendimiento).
+- **Cuello de botella: CPU de un solo proceso.** Uvicorn corre con un proceso; FastAPI ejecuta los endpoints en un grupo de hilos y la inferencia de numpy y scikit-learn libera el GIL solo en parte, por eso la API llega a ~2,0 núcleos y no más, aunque Docker tiene 8 disponibles.
+- **Punto de quiebre**: el escenario de estrés se detuvo con **460 usuarios**, por **latencia** (p95 2.100 ms, errores 0,00 %, 151 peticiones/s). **No hubo errores en toda la prueba**: la API no se cae ni rechaza peticiones, se degrada por tiempo de espera.
+- **Memoria estable**: la API se mantiene entre 272 y 309 MiB con cualquier carga (los modelos se cargan una vez al arrancar); no hay señales de fuga.
+- **El tamaño del modelo condiciona el despliegue**: entrenado con `random_forest`, cada modelo de P1 pesaba ~870 MB en disco, y la API carga dos (champion y challenger). En un Mac de 8 GB, con 3,8 GB asignados a Docker y MLflow usando ~2,4 GB, no cabían. Para la prueba se sirvió P1 con `hist_gb` (~0,9 MB por modelo), y la API completa usa ~300 MiB.
+- **MLflow no participa en la inferencia**: su CPU se mantiene bajo 2 % con cualquier carga, porque los modelos van empaquetados en la imagen de la API. El registry no es un punto de falla ni un cuello de botella en producción.
+- **Cómo escalar**: la API usa ~2 de los núcleos disponibles. Lo más directo es levantar varios procesos (`uvicorn --workers N`) o varias réplicas del servicio `api` detrás de un balanceador. Cada proceso vuelve a cargar los modelos, pero con ~300 MiB por proceso el costo de memoria es bajo.
+
+**Gráficas generadas** (`make load` las crea en `reports/load/`)
+
+| Escenario | Desempeño (latencia, peticiones/s, errores) | Recursos (CPU y memoria) |
+|---|---|---|
+| Escalones | ![escalones desempeño](reports/load/escalones_desempeno.png) | ![escalones recursos](reports/load/escalones_recursos.png) |
+| Estrés | ![estrés desempeño](reports/load/estres_desempeno.png) | ![estrés recursos](reports/load/estres_recursos.png) |
+
+Reportes interactivos de Locust: [`escalones_locust.html`](reports/load/escalones_locust.html) y
+[`estres_locust.html`](reports/load/estres_locust.html).
+
+**Evidencia de la ejecución**
+
+| Paso | Captura |
+|---|---|
+| Escenario incremental en la Terminal | ![escalones](reports/Evidence/load_escalones.png) |
+| Escenario de estrés y punto de quiebre | ![estrés](reports/Evidence/load_estres.png) |
+| `docker stats` durante la carga | ![docker stats](reports/Evidence/docker_stats.png) |
+<!-- resultados-carga:fin -->
+
 ## P3. Agrupamiento de estaciones por patrones de uso
 
 ### Pregunta de negocio
