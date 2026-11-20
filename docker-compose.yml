@@ -21,5 +21,12 @@ services:
       MLFLOW_TRACKING_URI: http://mlflow:5000
     ports:
       - "8000:8000"
+    healthcheck:
+      # La imagen no trae curl: se consulta /health con Python.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     volumes:
      - ./mlruns:/mlflow/mlruns

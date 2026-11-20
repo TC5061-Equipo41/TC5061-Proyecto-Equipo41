@@ -210,3 +210,9 @@ mlflow.db
 # MLflow y resultados locales
 mlruns/
 mlartifacts/
+
+# Pruebas de carga: CSV crudos de Locust y docker stats (la evidencia son HTML, PNG y JSON)
+reports/load/*.csv
+
+# Base de datos de MLflow del despliegue con Docker Compose
+mlflow-docker.db
