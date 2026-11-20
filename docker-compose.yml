@@ -1,0 +1,25 @@
+
+services:
+  mlflow:
+    build:
+      context: .
+      dockerfile: Dockerfile.mlflow
+    container_name: mibici-mlflow
+    volumes:
+      - ./mlflow-docker.db:/mlflow/mlflow-docker.db
+      - ./mlruns:/mlflow/mlruns
+    ports:
+      - "5000:5000"
+
+
+  api:
+    build: .
+    container_name: mibici-api
+    depends_on:
+      - mlflow
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+    ports:
+      - "8000:8000"
+    volumes:
+     - ./mlruns:/mlflow/mlruns
