@@ -1,8 +1,9 @@
-
+from contextlib import asynccontextmanager
 import os
 from pathlib import Path
-from typing import Annotated
 
+from dotenv import load_dotenv
+from fastapi import FastAPI
 import mlflow
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -22,80 +23,60 @@ TRACKING_URI = os.getenv(
 mlflow.set_tracking_uri(TRACKING_URI)
 mlflow.set_registry_uri(TRACKING_URI)
 
-MODEL_URI = f"models:/{MODEL_NAME}/{MODEL_VERSION}"
+from mibici.api.routes import health_check, predict
 
+load_dotenv()
+
+P3_MODEL_NAME = os.getenv("P3_MODEL_NAME")
+P3_MODEL_ALIAS = os.getenv("P3_MODEL_ALIAS")
+P3_MODEL_URI = os.getenv("P3_MODEL_URI")
+
+P1_CURRENT_MODEL = os.getenv("P1_CURRENT_MODEL")
+P1_CURRENT_ALIAS = os.getenv("P1_CURRENT_ALIAS")
+P1_CURRENT_URI = os.getenv("P1_CURRENT_URI")
+
+P1_CHALLENGER_MODEL = os.getenv("P1_CHALLENGER_MODEL")
+P1_CHALLENGER_ALIAS = os.getenv("P1_CHALLENGER_ALIAS")
+P1_CHALLENGER_URI = os.getenv("P1_CHALLENGER_URI")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_models()
+    yield
+
+
+def model_version(name: str, alias: str, uri: str) -> str:
+    """Modelo exportado (Docker): archivo VERSION de export_model.py; si no, el registry."""
+    version_file = Path(uri) / "VERSION"
+    if version_file.is_file():
+        return version_file.read_text().strip()
+    return str(mlflow.MlflowClient().get_model_version_by_alias(name, alias).version)
+
+
+def load_model(name: str, alias: str, uri: str) -> dict:
+    return {
+        "name": name,
+        "alias": alias,
+        "uri": uri,
+        "loaded": mlflow.pyfunc.load_model(uri),
+        "version": model_version(name, alias, uri),
+    }
+
+
+def load_models():
+    app.state.models = {
+        "p3": load_model(P3_MODEL_NAME, P3_MODEL_ALIAS, P3_MODEL_URI),
+        "p1_current": load_model(P1_CURRENT_MODEL, P1_CURRENT_ALIAS, P1_CURRENT_URI),
+        "p1_challenger": load_model(P1_CHALLENGER_MODEL, P1_CHALLENGER_ALIAS, P1_CHALLENGER_URI),
+    }
+
+        
 app = FastAPI(
-    title="MiBici P3 API",
-    description="API para predecir grupos de estaciones MiBici.",
+    title="MiBici API",
+    description="API para predecir grupos de estaciones (P3) y viajes por estación y hora (P1) de MiBici.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
-model = None
-
-
-class PredictionRequest(BaseModel):
-    viajes_salida: Annotated[int, Field(ge=0)]
-    viajes_llegada: Annotated[int, Field(ge=0)]
-    duracion_promedio: Annotated[float, Field(ge=0)]
-
-
-class PredictionResponse(BaseModel):
-    grupo_predicho: int
-    modelo: str
-    version: str
-
-
-@app.on_event("startup")
-def load_model():
-    global model
-    print("Tracking:", mlflow.get_tracking_uri())
-    print("Registry:", mlflow.get_registry_uri())
-    try:
-        model = mlflow.pyfunc.load_model(MODEL_URI)
-    except Exception as exc:
-        raise RuntimeError(
-            f"No fue posible cargar el modelo {MODEL_URI}: {exc}"
-        ) from exc
-
-
-@app.get("/health")
-def health():
-    return {
-        "status": "ok",
-        "model_loaded": model is not None,
-    }
-
-
-@app.get("/model-info")
-def model_info():
-    return {
-        "model_name": MODEL_NAME,
-        "model_version": MODEL_VERSION,
-        "model_uri": MODEL_URI,
-        "tracking_uri": TRACKING_URI,
-    }
-
-
-@app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest):
-    if model is None:
-        raise HTTPException(
-            status_code=503,
-            detail="El modelo todavía no está disponible.",
-        )
-
-    try:
-        features = pd.DataFrame([request.model_dump()])
-        prediction = model.predict(features)
-
-        return PredictionResponse(
-            grupo_predicho=int(prediction[0]),
-            modelo=MODEL_NAME,
-            version=MODEL_VERSION,
-        )
-
-    except Exception as exc:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Error al realizar la predicción: {exc}",
-        ) from exc
+app.include_router(health_check.router)
+app.include_router(predict.router)

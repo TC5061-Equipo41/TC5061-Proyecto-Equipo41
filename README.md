@@ -8,7 +8,7 @@ Dar respuesta a preguntas de negocio con técnicas de Machine Learning y DevOps 
 
 - P1: ¿Cuántos viajes se iniciarán en una estación o zona en un periodo futuro?.
 - P2: ¿Una estación estará en riesgo de quedarse sin bicicletas o sin anclajes disponibles en un periodo futuro?
-- P3:	¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
+- P3: ¿Qué grupos de estaciones comparten patrones de uso y dónde se ubican en la ciudad?
 
 ## Organización del Proyecto
 
@@ -127,10 +127,10 @@ mlflow run . -e train --env-manager uv --experiment-name mibici-equipo41 \
 - Sin MLflow Project también funciona: `python -m mibici.dataset` y
   `python -m mibici.modeling.train --question p1`.
 
-| Punto de entrada | Parámetros (`-P`) | Qué hace |
-|---|---|---|
-| `ingest` | — | `mibici/dataset.py`: Parquet en `data/interim/` y `data/manifest.json` |
-| `train` | `question` (p1, p2, p3, all), `model`, `params` (`"clave=valor,…"`), `stage_of_work` | `mibici/modeling/train.py` llama a `train_pX_model(...)` |
+| Punto de entrada | Parámetros (`-P`)                                                                    | Qué hace                                                               |
+| ---------------- | ------------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `ingest`         | —                                                                                    | `mibici/dataset.py`: Parquet en `data/interim/` y `data/manifest.json` |
+| `train`          | `question` (p1, p2, p3, all), `model`, `params` (`"clave=valor,…"`), `stage_of_work` | `mibici/modeling/train.py` llama a `train_pX_model(...)`               |
 
 ### Versión de datos: `data/manifest.json`
 
@@ -142,11 +142,11 @@ archivo de `data/` que se versiona en Git y se registra como artefacto en cada c
 
 ### Trazabilidad común en MLflow (`mibici/modeling/tracking.py`)
 
-| Función | Qué registra |
-|---|---|
-| `set_common_tags(question, model_family, stage_of_work)` | Etiquetas `team`, `git_commit`, `git_dirty`, `question`, `model_family`, `stage_of_work` |
-| `log_data_version(dataset=...)` | `data/manifest.json`, etiqueta `data_version` y el dataset con `mlflow.log_input` |
-| `log_run_config(dict)` | `config/run_config.json` y copia de `MLproject`, `python_env.yaml`, `requirements.txt` y `config.py` |
+| Función                                                  | Qué registra                                                                                         |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `set_common_tags(question, model_family, stage_of_work)` | Etiquetas `team`, `git_commit`, `git_dirty`, `question`, `model_family`, `stage_of_work`             |
+| `log_data_version(dataset=...)`                          | `data/manifest.json`, etiqueta `data_version` y el dataset con `mlflow.log_input`                    |
+| `log_run_config(dict)`                                   | `config/run_config.json` y copia de `MLproject`, `python_env.yaml`, `requirements.txt` y `config.py` |
 
 El despachador (`mibici/modeling/train.py`) crea una corrida `dispatch-…`, llama a
 `train_pX_model(original_data, data_version, date_range, model=None, params=None)` y aplica estas
@@ -174,35 +174,447 @@ DATA_METADATA = {
 
 3. Ejecuta `dataset.py` para que se generen los datos procesados en `/data/interim`, observa los ejemplos propuestos en `dataset.py` y ajusta de ser necesario.
 
-## Pruebas y validaciones
+## Pruebas, validación de datos y seguridad
 
-### PyTest
+Todo se ejecuta desde la raíz del repositorio con el entorno del proyecto activado (Python 3.14,
+`pip install -r requirements.txt`). Las pruebas no usan los datos reales ni el servidor de
+MLflow: trabajan con datos sintéticos y un tracking temporal (`tests/conftest.py`).
 
-```bash
-python -m pytest
+| Comando               | Qué hace                                                                         | Requiere                                       |
+| --------------------- | -------------------------------------------------------------------------------- | ---------------------------------------------- |
+| `make test`           | PyTest: pruebas unitarias, reproducibilidad del entrenamiento e higiene del repo | Entorno del proyecto                           |
+| `make security`       | bandit (código), pip-audit (dependencias) y detect-secrets (credenciales)        | Entorno del proyecto + internet (pip-audit)    |
+| `make validation-env` | Crea el entorno de validación (Python 3.12) en `~/.venvs/mibici-validation`      | [uv](https://docs.astral.sh/uv/), una sola vez |
+| `make validate`       | DeepChecks sobre los datos de P1, P2 y P3; reportes en `reports/validation/`     | Datos en `data/raw/` + entorno de validación   |
+| `make check`          | Los tres anteriores en orden                                                     | Todo lo anterior                               |
+
+Sin `make`: `python -m pytest`; los comandos de seguridad y validación están en el `Makefile`.
+
+### Pruebas (PyTest)
+
+```
+tests/
+├── conftest.py                      # datos sintéticos y MLflow temporal
+├── mibici/test_dataset.py           # ingesta, manifiesto, hash y data_version
+├── mibici/test_features.py          # limpieza y variables comunes
+├── modeling/test_reproducibility.py # reproducibilidad de P1, P2 y P3
+└── test_repo_hygiene.py             # seguridad del repositorio como pruebas
 ```
 
-Resultado: **35 pruebas aprobadas**.
-![Ejecución de PyTest](reports/Evidence/pytest_execution.png)
+- **Unitarias**: casos normales y límite de la ingesta (`clean_trips`, `join_station_metadata`,
+  `build_manifest`, `compute_data_version`…) y de `features.py` (fechas inválidas, duraciones
+  negativas, duplicados y nulos).
+- **Reproducibilidad**: cada pregunta entrena dos veces con la misma semilla y exige
+  resultados idénticos — predicciones de Ridge, Random Forest y HistGradientBoosting (P1),
+  probabilidades y métricas de la regresión logística (P2), etiquetas y silhouette de K-Means
+  (P3). Dos pruebas de control cambian la semilla y verifican que la diferencia sí se detecta.
+- **Higiene del repositorio**: rutas sensibles cubiertas por `.gitignore`, ningún archivo de
+  datos, MLflow, modelos o credenciales versionado hoy **ni en el historial**, `.env.example`
+  sin secretos y detect-secrets sin hallazgos nuevos.
 
-### DeepChecks
+### Validación de datos (DeepChecks)
+
+`mibici/validation/validate_p3_data.py` ejecuta la suite de integridad de DeepChecks (tipos
+mezclados, nulos, duplicados, valores únicos, caracteres especiales, etiquetas en conflicto,
+correlaciones) sobre la tabla de P1, la tabla estación-hora de P2 y las características de
+estaciones de P3.
+
+DeepChecks 0.19.1, su última versión, no es compatible con el stack del proyecto: importa
+`pkg_resources` (ya no incluido en setuptools ≥ 81), usa `np.Inf` (eliminado en numpy 2) y pide
+el scorer `max_error` (eliminado en scikit-learn 1.9). Por eso corre en un **entorno aparte**
+con Python 3.12 y versiones fijas en `requirements-validation.txt`. `make validate`:
+
+1. En el entorno del proyecto, `python -m mibici.validation.prepare_inputs` deja listo el
+   dataset común (`data/interim/`) y `data/processed/p3_station_features.csv`.
+2. En el entorno de validación corre `validate_p3_data.py`, que lee esos archivos y escribe
+   los reportes HTML.
 
 ```bash
-python mibici/validation/validate_p3_data.py
+make validation-env    # una sola vez
+make validate
 ```
 
-Resultado: validación de datos completada correctamente.
-![Ejecución de DeepChecks](reports/Evidence/deepchecks_execution.png)
+### Seguridad
 
-### Bandit
+| Chequeo                      | Herramienta                                                  | Resultado                                                                                                                                                                                                                                                                           |
+| ---------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Código                       | `bandit -c pyproject.toml -r mibici`                         | Sin hallazgos. Los 11 avisos previos (llamadas a `git` con `subprocess` en tres copias de la misma función) se corrigieron: una sola función en `tracking.py`, con ruta absoluta a `git` y argumentos fijos; las 2 supresiones `# nosec` restantes están justificadas en el código. |
+| Dependencias                 | `pip-audit -r requirements.txt`                              | Sin vulnerabilidades. Se encontró **CVE-2026-53995** (path traversal en FileStore) en mlflow 3.17.0 y se actualizó a 3.17.2.                                                                                                                                                        |
+| Dependencias de validación   | `pip-audit` sobre `~/.venvs/mibici-validation`               | 3 avisos en setuptools 80.9.0 (construcción de sdist y wheels legacy en Windows). **Riesgo aceptado**: DeepChecks necesita `pkg_resources`, que no existe en las versiones corregidas, y el entorno de validación no construye ni instala paquetes de terceros.                     |
+| Credenciales                 | `detect-secrets` con `.secrets.baseline`                     | Sin secretos. La línea base excluye por regla los falsos positivos: hashes SHA-256 del manifiesto, imágenes PNG embebidas en notebooks y reportes HTML de DeepChecks.                                                                                                               |
+| Datos y variables de entorno | `.gitignore` + `.env.example` + `tests/test_repo_hygiene.py` | Datos de MiBici, `mlflow.db`, `mlartifacts/`, modelos y `.env` ignorados; ninguno aparece en el historial. Las variables locales van en `.env` (copiar desde `.env.example`).                                                                                                       |
+
+### Evidencia
+
+| Ejecución                  | Captura                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| PyTest                     | ![PyTest](reports/Evidence/pytest_execution.png)                    |
+| DeepChecks                 | ![DeepChecks](reports/Evidence/deepchecks_execution.png)            |
+| bandit                     | ![bandit](reports/Evidence/bandit_execution.png)                    |
+| pip-audit y detect-secrets | ![Seguridad](reports/Evidence/security_execution.png)               |
+| Reproducibilidad           | ![Reproducibilidad](reports/Evidence/reproducibility_execution.png) |
+
+Reportes generados: `reports/security-scan/bandit.html` y `reports/validation/*.html`.
+
+## Correr FastAPI con Docker
+
+La API sirve los modelos de **P3** (grupos de estaciones) y **P1** (demanda de viajes por
+estación y hora). Los modelos se toman del Model Registry de MLflow por nombre y alias, según las
+variables de entorno de la tabla siguiente, y se cargan al arrancar la API.
+
+**Precondición**: los modelos deben estar entrenados y registrados. Si no lo están:
 
 ```bash
-python -m bandit -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
+mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p3
+mlflow run . -e train --env-manager local --experiment-name mibici-equipo41 -P question=p1 -P model=random_forest -P ... (model params)
+```
+
+### Variables de entorno
+
+La API las lee de `.env` (con `python-dotenv`) o del entorno del proceso. Cada modelo se define
+con su nombre en el registry, su alias y la URI desde donde se carga.
+
+| Variable              | Ejemplo                                         | Uso                                                |
+| --------------------- | ----------------------------------------------- | -------------------------------------------------- |
+| `MLFLOW_TRACKING_URI` | `http://127.0.0.1:5000`                         | Servidor de MLflow con el Model Registry           |
+| `P3_MODEL_NAME`       | `mibici-equipo41-p3-grupos`                     | Modelo registrado de P3                            |
+| `P3_MODEL_ALIAS`      | `champion`                                      | Alias de la versión de P3 que se sirve             |
+| `P3_MODEL_URI`        | `models:/mibici-equipo41-p3-grupos@champion`    | URI desde donde se carga P3                        |
+| `P1_CURRENT_MODEL`    | `mibici-equipo41-p1-demanda`                    | Modelo registrado de P1 (versión actual)           |
+| `P1_CURRENT_ALIAS`    | `champion`                                      | Alias de la versión actual de P1                   |
+| `P1_CURRENT_URI`      | `models:/mibici-equipo41-p1-demanda@champion`   | URI desde donde se carga la versión actual de P1   |
+| `P1_CHALLENGER_MODEL` | `mibici-equipo41-p1-demanda`                    | Modelo registrado de P1 (versión retadora)         |
+| `P1_CHALLENGER_ALIAS` | `challenger`                                    | Alias de la versión retadora de P1                 |
+| `P1_CHALLENGER_URI`   | `models:/mibici-equipo41-p1-demanda@challenger` | URI desde donde se carga la versión retadora de P1 |
+
+Para correr la API localmente, copia estas variables a `.env` (están en `.env.example`) y la
+versión que reporta cada respuesta se consulta en el registry a partir del nombre y el alias, así
+que la URI debe apuntar al mismo nombre y alias. En Docker no se usa `.env`: el `Dockerfile` define
+las variables y apunta las URIs a los modelos exportados en la imagen, cuya versión se lee del
+archivo `VERSION` de cada carpeta.
+
+**Pasos** (desde la raíz del repositorio, con Docker Desktop abierto):
+
+1. Levanta MLflow: `mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000`
+2. En otra terminal, descarga los modelos del registry a `models/p3_model/`, `models/p1_current/`
+   y `models/p1_challenger/`:
+   ```bash
+   export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+   python -m mibici.api.scripts.export_model
+   ```
+3. Construye la imagen: `docker build -t mibici-api .`
+4. Levanta el contenedor: `docker run --rm --name mibici-api -p 8000:8000 mibici-api`
+5. Prueba la API desde otra terminal (o en `http://localhost:8000/docs`):
+
+| Endpoint                  | Qué devuelve                                                |
+| ------------------------- | ----------------------------------------------------------- |
+| `GET /health`             | Estado del servicio                                         |
+| `POST /predict/p3`        | Grupo predicho para una estación                            |
+| `POST /predict/p1/abtest` | Viajes predichos para una estación, hora y día de la semana |
+
+### `POST /predict/p3`
+
+**Entrada.** La petición trae el uso agregado de una estación, con el mismo esquema que
+`data/processed/p3_station_features.csv`. La API calcula las variables del modelo
+(proporciones por franja horaria y logaritmos de los viajes) con la misma función del
+entrenamiento (`prepare_features`) y entrega al modelo solo las columnas de su firma, sea cual sea
+el candidato que quedó como campeón.
+
+```bash
+curl -X POST http://localhost:8000/predict/p3 \
+  -H "Content-Type: application/json" \
+  -d '{"viajes_salida": 856, "viajes_llegada": 754, "salidas_manana": 235,
+       "salidas_tarde": 229, "salidas_noche": 380, "salidas_madrugada": 12,
+       "salidas_fin_semana": 179, "duracion_promedio": 13.4}'
+```
+
+```json
+{ "grupo_predicho": 0, "modelo": "mibici-equipo41-p3-grupos", "version": "2" }
+```
+
+El número de grupo y la versión dependen del modelo registrado en cada equipo.
+
+**Validación (Pydantic).** Todos los campos son obligatorios; los conteos son enteros ≥ 0; la
+duración promedio, en minutos, es mayor que 0 y menor o igual que 1440; la suma de salidas por franja y las salidas de fin de
+semana no pueden superar `viajes_salida`; no se aceptan campos extra. Una entrada inválida
+responde `422` con el campo y el motivo, por ejemplo:
+
+```json
+{
+  "detail": [
+    {
+      "type": "greater_than_equal",
+      "loc": ["body", "viajes_salida"],
+      "msg": "Input should be greater than or equal to 0",
+      "input": -5,
+      "ctx": { "ge": 0 }
+    }
+  ]
+}
+```
+
+### `POST /predict/p1/abtest`
+
+**Entrada.** Estación, hora y día de la semana para los que se quiere estimar el número de viajes
+que inician, más los viajes reales observados.
+
+| Campo       | Tipo   | Descripción                                        |
+| ----------- | ------ | -------------------------------------------------- |
+| `origen_id` | entero | Identificador de la estación de origen             |
+| `hora`      | entero | Hora del día (0 a 23)                              |
+| `dia`       | texto  | Día de la semana en inglés: `Monday` … `Sunday`    |
+| `y`         | número | Viajes reales que iniciaron en esa estación y hora |
+
+```bash
+curl -X POST http://localhost:8000/predict/p1/abtest \
+  -H "Content-Type: application/json" \
+  -d '{"origen_id": 272, "hora": 8, "dia": "Monday", "y": 7}'
+```
+
+**Salida.** `prediction` es el número de viajes estimado (nunca negativo) y `model` el alias del
+modelo de P1 que respondió.
+
+```json
+{ "prediction": 6.76, "model": "champion" }
+```
+
+Todos los campos son obligatorios; una entrada con tipos inválidos responde `422`.
+
+### Estrategia de despliegue y reproducibilidad
+
+Para los modelos P3 y P1 de MiBici se seleccionó una estrategia de **inferencia bajo demanda** mediante una API REST desarrollada con FastAPI. Para P3, el servicio recibe características agregadas de los viajes de una estación y devuelve su grupo estimado; para P1, recibe una estación, una hora y un día de la semana y devuelve los viajes estimados. En ningún caso se vuelve a entrenar el modelo en cada petición.
+
+Esta modalidad facilita integrar el agrupamiento con aplicaciones externas mediante HTTP. La predicción se obtiene cuando un cliente consulta el servicio, pero esto **no significa que los datos de viajes se reciban en tiempo real**: las entradas corresponden a métricas agregadas previamente. Por ello, el servicio es adecuado para consultas puntuales; si se necesitara clasificar periódicamente un gran número de estaciones, podría incorporarse un proceso adicional de inferencia por lotes.
+
+Se eligió **empaquetar una copia de los modelos en la imagen**, en lugar de conectarse al Model Registry durante cada arranque. Antes de construir el contenedor, `python -m mibici.api.scripts.export_model` recupera del registro MLflow tres modelos, cada uno con su firma y un archivo `VERSION`:
+
+| Modelo registrado | Alias | Carpeta |
+|---|---|---|
+| `mibici-equipo41-p3-grupos` | `champion` | `models/p3_model/` |
+| `mibici-equipo41-p1-demanda` | `champion` | `models/p1_current/` |
+| `mibici-equipo41-p1-demanda` | `challenger` | `models/p1_challenger/` |
+
+Esto evita que la API requiera un servidor MLflow disponible durante la inferencia.
+
+El contenedor reúne la aplicación, los modelos exportados y las dependencias necesarias, lo que favorece la **portabilidad y la reproducibilidad del despliegue**. El archivo `VERSION` de cada carpeta permite identificar la versión utilizada. Si cambia el alias `champion` o `challenger`, se debe **volver a exportar los modelos y reconstruir la imagen** para publicar el cambio; el contenedor en ejecución no actualiza los modelos automáticamente.
+
+### Ejecución y consumo desde Windows PowerShell
+
+Esta alternativa complementa los comandos Bash anteriores. Desde la raíz del repositorio, con el entorno Python activado y **Docker Desktop iniciado**, usa las siguientes instrucciones. Se supone que los modelos P3 y P1 ya están entrenados y registrados en el MLflow local.
+
+**1. Iniciar MLflow** (mantén abierta esta terminal):
+
+```powershell
+mlflow server --backend-store-uri sqlite:///mlflow.db --port 5000
+```
+
+**2. Exportar los modelos** (en una segunda terminal):
+
+```powershell
+$env:MLFLOW_TRACKING_URI = "http://127.0.0.1:5000"
+python -m mibici.api.scripts.export_model
+```
+
+**3. Construir la imagen:**
+
+```powershell
+docker build -t mibici-api .
+```
+
+**4. Levantar el contenedor** (mantén abierta esta terminal):
+
+```powershell
+docker run --rm --name mibici-api -p 8000:8000 mibici-api
+```
+
+**5. Comprobar el servicio** (en otra terminal):
+
+```powershell
+Invoke-RestMethod -Uri "http://localhost:8000/health" -Method Get
+```
+
+**6. Consultar el grupo de una estación:**
+
+```powershell
+$body = @{
+    viajes_salida = 856
+    viajes_llegada = 754
+    salidas_manana = 235
+    salidas_tarde = 229
+    salidas_noche = 380
+    salidas_madrugada = 12
+    salidas_fin_semana = 179
+    duracion_promedio = 13.4
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/predict/p3" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+```
+
+La petición utiliza los mismos valores de ejemplo del apartado anterior. La respuesta incluye `grupo_predicho`, `modelo` y `version`; el grupo y la versión dependen del modelo campeón empaquetado.
+
+**7. Estimar los viajes de una estación:**
+
+```powershell
+$body = @{
+    origen_id = 272
+    hora = 8
+    dia = "Monday"
+    y = 7
+} | ConvertTo-Json
+
+Invoke-RestMethod -Uri "http://localhost:8000/predict/p1/abtest" `
+    -Method Post `
+    -ContentType "application/json" `
+    -Body $body
+```
+
+La respuesta incluye `prediction` (viajes estimados) y `model` (alias del modelo de P1 que respondió). También está disponible la interfaz interactiva de FastAPI en <http://localhost:8000/docs> mientras el contenedor está activo.
+
+### Evidencia del contenedor
+
+> Las capturas corresponden a la versión anterior de la API (solo P3); hay que actualizarlas con la
+> imagen que incluye P1.
+
+| Paso                | Captura                                            |
+| ------------------- | -------------------------------------------------- |
+| `docker build`      | ![docker build](reports/Evidence/docker_build.png) |
+| `docker run`        | ![docker run](reports/Evidence/docker_run.png)     |
+| Peticiones a la API | ![API](reports/Evidence/api_requests.png)          |
+
+## Monitoreo de drift (Evidently)
+
+El objetivo es detectar cuándo los datos de producción se alejan de los de entrenamiento. Se
+monitorea el modelo **P3** que sirve la API (`mibici-equipo41-p3-grupos`, versión 1, alias
+`champion`, candidato `KMeans_conteos_k2`).
+
+### 1. Conjuntos de datos
+
+| Conjunto           | Periodo                        | Viajes             | Por qué                                                                                                 |
+| ------------------ | ------------------------------ | ------------------ | ------------------------------------------------------------------------------------------------------- |
+| **Referencia**     | octubre 2025 – septiembre 2026 | 4.497.119          | Es exactamente el periodo con que se entrenó el campeón de P3 (`data_version` `v1.0-cec7eeaf7d56`)      |
+| **Actual**         | octubre 2026                   | 635.532            | Primer mes publicado por MiBici **después** del entrenamiento: es lo que el modelo recibe en producción |
+| Control estacional | octubre 2025 vs octubre 2026   | 420.064 vs 635.532 | Mismo mes un año antes, para separar temporada de cambio real                                           |
+
+La API de P3 no registra las peticiones que recibe, así que la producción se representa con el mes
+siguiente de los datos abiertos. Ambos conjuntos pasan por el mismo pipeline del proyecto
+(`clean_trips`, `join_station_metadata` y `mibici/P3/features.py`) y se comparan en dos niveles:
+
+- **Viajes** (lo que llega al sistema): hora, día de la semana, fin de semana, duración, estación de
+  origen y de destino, viajes circulares y origen fuera del catálogo. Se usa una muestra aleatoria
+  de 200.000 viajes por periodo, con semilla 42, sin datos personales (género ni año de nacimiento).
+- **Estaciones** (la entrada del modelo P3): las variables de `p3_station_features.csv` con la
+  transformación de la API (`prepare_features`) y el **grupo que predice el campeón**. Como el
+  modelo se entrenó con totales de 12 meses, los conteos de octubre se llevan a escala anual
+  (× 365/31).
+
+### 2. Reportes
+
+```bash
+make drift                                     # referencia 2025_10:2026_09 vs actual 2026_10
+make drift REFERENCE=2025_10:2025_10 CURRENT=2026_10:2026_10   # control estacional
 ```
 
 Resultado: análisis de seguridad completado y reporte HTML generado.
 ![Ejecución de Bandit](reports/Evidence/bandit_execution.png)
 ## Actividad 9. Despliegue de servicios con Docker Compose
+Genera en `reports/drift/` dos reportes de Evidently 0.7 (`DataDriftPreset` y `DataSummaryPreset`)
+y un resumen:
+
+| Archivo                                                          | Contenido                                                                 |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [`trips_drift.html`](reports/drift/trips_drift.html)             | Drift por variable y calidad de los datos a nivel de viaje                |
+| [`p3_stations_drift.html`](reports/drift/p3_stations_drift.html) | Drift por variable de la entrada del modelo P3 y de sus predicciones      |
+| [`drift_summary.json`](reports/drift/drift_summary.json)         | Tabla por variable, cambio de grupo por estación e indicadores de calidad |
+
+Evidently elige la prueba según el tamaño y el tipo de variable. Con más de 1.000 filas (viajes)
+usa distancias: Wasserstein normalizada para numéricas y Jensen-Shannon para categóricas, con drift
+si la distancia es ≥ 0,1. Con menos de 1.000 (estaciones) usa pruebas estadísticas: K-S para
+numéricas y prueba Z de proporciones para el grupo, con drift si p < 0,05. El reporte es
+reproducible: dos corridas dan exactamente los mismos valores.
+
+**Viajes · 3 de 8 variables con drift**
+
+| Variable             | Prueba         | Valor | Drift  | Control oct-25 vs oct-26 |
+| -------------------- | -------------- | ----- | ------ | ------------------------ |
+| `duracion_minutos`   | Wasserstein    | 0,217 | **Sí** | 0,246 · Sí               |
+| `destino_id`         | Jensen-Shannon | 0,132 | **Sí** | 0,198 · Sí               |
+| `origen_id`          | Jensen-Shannon | 0,131 | **Sí** | 0,200 · Sí               |
+| `dia_semana`         | Jensen-Shannon | 0,041 | No     | 0,048 · No               |
+| `hora`               | Wasserstein    | 0,021 | No     | 0,035 · No               |
+| `viaje_circular`     | Jensen-Shannon | 0,013 | No     | 0,027 · No               |
+| `origen_en_catalogo` | Jensen-Shannon | 0,013 | No     | 0,000 · No               |
+| `fin_de_semana`      | Jensen-Shannon | 0,001 | No     | 0,033 · No               |
+
+**Estaciones (entrada de P3) · 7 de 11 variables con drift**
+
+| Variable                                             | p-valor K-S / Z | Drift           |
+| ---------------------------------------------------- | --------------- | --------------- |
+| `viajes_salida`, `viajes_llegada` (y sus logaritmos) | < 0,001         | **Sí**          |
+| `duracion_promedio`                                  | < 0,001         | **Sí**          |
+| `grupo_predicho`                                     | < 0,001         | **Sí**          |
+| `salidas_noche_proporcion`                           | 0,035           | **Sí** (límite) |
+| `salidas_manana_proporcion`                          | 0,053           | No (límite)     |
+| `salidas_fin_semana_proporcion`                      | 0,149           | No              |
+| `salidas_madrugada_proporcion`                       | 0,275           | No              |
+| `salidas_tarde_proporcion`                           | 0,367           | No              |
+
+**Calidad de los datos**: buena en ambos periodos y mejor en octubre. Las estaciones fuera del
+catálogo pasan de 0,04 % a 0 %, los viajes de duración cero de 0,08 % a 0,03 %, y los de más de 3
+horas se mantienen en 0,01 %. No hay valores nulos en las variables usadas, porque `clean_trips`
+los descarta, y no aparecen fechas fuera del periodo.
+
+### 3. Interpretación
+
+**El sistema creció, pero se usa en los mismos horarios.**
+
+| Indicador              | Referencia     | Octubre 2025   | Octubre 2026                                      |
+| ---------------------- | -------------- | -------------- | ------------------------------------------------- |
+| Viajes por día         | 12.321         | 13.551         | **20.501** (+66 % vs referencia, +51 % vs oct-25) |
+| Estaciones con viajes  | 471            | 367            | 470 (+103 desde oct-25)                           |
+| Duración mediana / p99 | 9,4 / 33,4 min | 9,7 / 31,7 min | **8,0 / 29,8 min**                                |
+
+- **Hay drift significativo en cuánto se usa cada estación y cuánto duran los viajes.** El reparto
+  de viajes entre estaciones (`origen_id`, `destino_id`) y la duración cambian, y el cambio es
+  todavía mayor contra octubre 2025. Por eso no es un efecto de temporada: el sistema se expandió
+  (103 estaciones nuevas en un año) y la demanda creció un 51 % en el mismo mes. Con una red más
+  densa, los viajes son más cortos.
+- **No cambia cuándo se usa.** Hora, día de la semana, fin de semana y viajes circulares no
+  presentan drift en ninguna de las dos comparaciones, y las proporciones por franja horaria de
+  cada estación se mantienen (solo la nocturna queda en el límite). El patrón de uso es estable.
+
+**Implicaciones para el desempeño**
+
+- **P3 (modelo en producción).** El campeón agrupa por volumen y duración, y el grupo 1 es el de
+  alto uso (unos 27.600 viajes al año por estación, contra 5.800 del grupo 0). Con los datos de
+  octubre, **100 de 468 estaciones (21 %) cambian de grupo** y el grupo de alto uso pasa de 80 a
+  180 estaciones (de 17 % a 38 %). Esas estaciones no cambiaron su patrón horario: subieron con el
+  crecimiento general. La segmentación pierde sentido de negocio, porque "alto uso" significa
+  cosas distintas antes y después. Hay que reentrenar con datos recientes, y conviene comparar con
+  el candidato basado en proporciones, que no depende de la escala.
+- **P1 (viajes por estación y hora).** Entrenado con menor demanda, **subestimaría
+  sistemáticamente** los viajes, sobre todo en las estaciones que ganaron participación. Las
+  estaciones nuevas no tienen historia (arranque en frío). La forma horaria y semanal, que es lo
+  que más aporta al modelo, sigue siendo válida.
+- **P2 (riesgo de estación vacía o llena).** Más viajes por anclaje significa más eventos de
+  riesgo, así que la proporción de la clase positiva y el umbral de decisión calibrados ya no
+  corresponden. Los viajes más cortos aceleran la rotación de bicicletas.
+
+**Decisión**: hay drift de datos y de predicciones en P3, y no se explica por la temporada.
+Corresponde reentrenar con una ventana que incluya los meses recientes y comparar la nueva versión
+con el campeón actual antes de cambiar el alias `champion`. En este caso no aplica el control
+estacional para `grupo_predicho` (oct-25 vs oct-26): ahí ambos meses quedan en escala mensual y el
+modelo, entrenado con totales anuales, asigna todas las estaciones al grupo de bajo uso.
+
+### Evidencia
+
+| Paso                                   | Captura                                                |
+| -------------------------------------- | ------------------------------------------------------ |
+| `make drift` en la Terminal            | ![drift terminal](reports/Evidence/drift_terminal.png) |
+| Reporte de viajes (Evidently)          | ![drift viajes](reports/Evidence/drift_trips.png)      |
+| Reporte de estaciones / P3 (Evidently) | ![drift P3](reports/Evidence/drift_p3.png)             |
 
 ### Objetivo
 
@@ -338,7 +750,7 @@ Las variables numéricas utilizadas por el modelo se escalan antes de aplicar el
 
 ### Modelo y evaluación
 
-Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_silhouette score_), con el objetivo de comparar la separación y cohesión de los grupos.
+Se utiliza K-Means para agrupar las estaciones. Se evalúan diferentes valores de K mediante el coeficiente de silueta (_*silhouette score*_), con el objetivo de comparar la separación y cohesión de los grupos.
 
 El entrenamiento registra parámetros, métricas, etiquetas y artefactos en MLflow para facilitar la reproducibilidad y comparación de experimentos.
 

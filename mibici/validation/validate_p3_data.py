@@ -150,6 +150,10 @@ def run_validation(
         / f"{project_name.lower()}_data_integrity.html"
     )
 
+    # DeepChecks no sobrescribe: si el archivo existe crea "<nombre> (1).html". Se borra antes
+    # para que cada ejecución reemplace el reporte en lugar de acumular copias.
+    report_path.unlink(missing_ok=True)
+
     results.save_as_html(
         str(report_path),
         as_widget=False,

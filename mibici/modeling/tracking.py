@@ -24,7 +24,10 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import subprocess
+import shutil
+
+# subprocess se usa solo para `git`, con ejecutable absoluto y argumentos fijos (ver _git).
+import subprocess  # nosec B404
 import tempfile
 import warnings
 
@@ -52,30 +55,35 @@ def setup_tracking(experiment_name: str = EXPERIMENT_NAME) -> str:
     return MLFLOW_TRACKING_URI
 
 
+def _git(*args: str) -> str | None:
+    """Ejecuta `git` con argumentos fijos del propio código y devuelve su salida.
+
+    Seguridad (revisión de bandit B603/B607):
+    - el ejecutable se resuelve a una ruta absoluta con ``shutil.which`` (no una ruta parcial);
+    - los argumentos nunca vienen del usuario ni de datos externos, y no se usa ``shell=True``.
+    Devuelve ``None`` si no hay Git o si el directorio no es un repositorio.
+    """
+    git = shutil.which("git")
+    if git is None:
+        return None
+    try:
+        # Ejecutable absoluto y argumentos fijos del código, sin shell (revisado: bandit B603).
+        out = subprocess.run(  # nosec B603
+            [git, *args], cwd=PROJ_ROOT, capture_output=True, text=True, check=True
+        )
+    except subprocess.CalledProcessError:
+        return None
+    return out.stdout.strip()
+
+
 def get_git_commit() -> str:
     """Commit actual de Git (``unknown`` si no hay repositorio)."""
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "HEAD"], cwd=PROJ_ROOT, capture_output=True, text=True, check=True
-        )
-        return out.stdout.strip()
-    except subprocess.CalledProcessError, FileNotFoundError:
-        return "unknown"
+    return _git("rev-parse", "HEAD") or "unknown"
 
 
 def git_is_dirty() -> bool:
     """True si hay cambios sin commit en archivos versionados (el run no sería reproducible)."""
-    try:
-        out = subprocess.run(
-            ["git", "status", "--porcelain", "--untracked-files=no"],
-            cwd=PROJ_ROOT,
-            capture_output=True,
-            text=True,
-            check=True,
-        )
-        return bool(out.stdout.strip())
-    except subprocess.CalledProcessError, FileNotFoundError:
-        return False
+    return bool(_git("status", "--porcelain", "--untracked-files=no"))
 
 
 def _resolve_run_id(run_id: str | None) -> str:
