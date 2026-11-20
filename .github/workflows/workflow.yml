@@ -29,3 +29,19 @@ jobs:
 
       - name: Build Docker images
         run: docker compose build
+
+      - name: Start MLflow with Compose
+        run: |
+          touch mlflow-docker.db
+          docker compose up -d mlflow
+
+      - name: Check MLflow responds
+        run: curl --retry 15 --retry-delay 2 --retry-all-errors -fsS http://localhost:5000/health
+
+      - name: Show MLflow logs on failure
+        if: failure()
+        run: docker compose logs mlflow
+
+      - name: Shut down Compose
+        if: always()
+        run: docker compose down
