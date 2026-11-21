@@ -57,8 +57,8 @@ create_environment:
 security:
 	@mkdir -p reports/security-scan
 	@echo ">>> bandit: análisis estático del código"
-	$(PYTHON_INTERPRETER) -m bandit -c pyproject.toml -r mibici
-	$(PYTHON_INTERPRETER) -m bandit -q -c pyproject.toml -r mibici -f html -o reports/security-scan/bandit.html
+	$(PYTHON_INTERPRETER) -m bandit -c pyproject.toml -r mibici load
+	$(PYTHON_INTERPRETER) -m bandit -q -c pyproject.toml -r mibici load -f html -o reports/security-scan/bandit.html
 	@echo ">>> pip-audit: vulnerabilidades conocidas en las dependencias"
 	$(PYTHON_INTERPRETER) -m pip_audit -r requirements.txt
 	@echo ">>> detect-secrets: credenciales en archivos versionados"
@@ -84,6 +84,23 @@ CURRENT ?= 2026_10:2026_10
 .PHONY: drift
 drift:
 	$(PYTHON_INTERPRETER) -m mibici.monitoring.drift --reference $(REFERENCE) --current $(CURRENT)
+
+## Pruebas de carga con Locust y monitoreo de recursos (docker stats)
+## 1) make load-up  2) make load SCENARIO=escalones|estres  3) make load-down
+## Reportes, gráficas y resumen en reports/load/
+SCENARIO ?= escalones
+.PHONY: load-up load load-down
+load-up:
+	@test -f models/p3_model/MLmodel -a -f models/p1_current/MLmodel -a -f models/p1_challenger/MLmodel \
+		|| (echo "Faltan modelos: python -m mibici.api.scripts.export_model" && exit 1)
+	touch mlflow-docker.db
+	docker compose up -d --build
+
+load:
+	$(PYTHON_INTERPRETER) -m load.run --scenario $(SCENARIO)
+
+load-down:
+	docker compose down
 
 ## Pruebas + seguridad + validación de datos
 .PHONY: check

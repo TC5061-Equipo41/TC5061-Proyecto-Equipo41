@@ -12,8 +12,15 @@ reports/
 docs/
 references/
 mlruns/
+mlartifacts/
+.env
+logs/
 mlflow.db
 mlflow-docker.db
-models/
+models/*
+!models/p3_model/
+!models/p1_current/
+!models/p1_challenger/
+!models/.gitkeep
 tests/
 *.ipynb
