@@ -728,6 +728,16 @@ Se verificó el funcionamiento de los servicios mediante las siguientes comproba
 - Ejecución de solicitudes de predicción a `/predict/p3` y `/predict/p1/abtest`, obteniendo respuestas HTTP 200.
 
 Con esta implementación, los servicios de MLflow y predicción pueden iniciarse conjuntamente mediante un único comando de Docker Compose, facilitando la reproducibilidad y ejecución del sistema.
+## Ejecutar y verificar el pipeline de GitHub Actions
+
+Cada push a una rama del repositorio activa el flujo [On push workflow](.github/workflows/workflow.yml).
+
+1. Crea un commit en tu rama y súbelo con `git push`.
+2. En [Actions](https://github.com/TC5061-Equipo41/TC5061-Proyecto-Equipo41/actions/workflows/workflow.yml), selecciona la ejecución que corresponda a tu rama y commit.
+3. Abre el job **pytest** para consultar los pasos. Una marca verde indica que la validación terminó correctamente. Si falla, abre el paso marcado en rojo para consultar su registro.
+
+El flujo configura Python 3.14 con caché de pip, verifica el formato con Ruff, ejecuta pytest y construye las imágenes de la API y MLflow con `docker compose build`. Luego inicia MLflow, consulta su endpoint `/health` y detiene los contenedores al finalizar.
+
 ## Pruebas de carga (Locust) y uso de recursos
 
 Objetivo: medir cómo responde la API en contenedores cuando muchos usuarios piden predicciones al
