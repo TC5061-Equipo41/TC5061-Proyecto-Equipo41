@@ -1,4 +1,4 @@
-﻿"""Reporte de drift para la demanda por estación y hora de P1."""
+"""Reporte de drift para la demanda por estación y hora de P1."""
 
 import json
 from pathlib import Path
