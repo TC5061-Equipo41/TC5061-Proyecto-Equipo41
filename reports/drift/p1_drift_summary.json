@@ -1,0 +1,49 @@
+{
+  "modelo": "P1",
+  "referencia_champion": "2025-10 a 2026-08",
+  "actual": "2026-10",
+  "filas_muestra_referencia": 200000,
+  "filas_muestra_actual": 200000,
+  "entradas": [
+    "Origen_Id",
+    "Hora",
+    "Dia"
+  ],
+  "objetivo_observado": "Viajes",
+  "variables": [
+    {
+      "variable": "Viajes",
+      "metodo": "Wasserstein distance (normed)",
+      "valor": 0.3205,
+      "umbral": 0.1,
+      "drift": true
+    },
+    {
+      "variable": "Dia",
+      "metodo": "Jensen-Shannon distance",
+      "valor": 0.0373,
+      "umbral": 0.1,
+      "drift": false
+    },
+    {
+      "variable": "Hora",
+      "metodo": "Jensen-Shannon distance",
+      "valor": 0.004,
+      "umbral": 0.1,
+      "drift": false
+    },
+    {
+      "variable": "Origen_Id",
+      "metodo": "Jensen-Shannon distance",
+      "valor": 0.0209,
+      "umbral": 0.1,
+      "drift": false
+    }
+  ],
+  "resumen_evidently": {
+    "variables_con_drift": 1,
+    "proporcion": 0.25,
+    "umbral_dataset": 0.5,
+    "drift_del_dataset": false
+  }
+}
