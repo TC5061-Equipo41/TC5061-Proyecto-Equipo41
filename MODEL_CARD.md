@@ -1,4 +1,4 @@
-﻿# Model Card de P1 · Demanda por estación y hora
+# Model Card de P1 · Demanda por estación y hora
 
 **Proyecto MiBici Guadalajara · Equipo 41 · TC5061**
 
@@ -18,24 +18,25 @@ P1 estima cuántos viajes salen de una estación en una hora determinada. Cada f
 | Elemento | Valor registrado en MLflow |
 |---|---|
 | Modelo | `mibici-equipo41-p1-demanda` |
-| Versión y alias en el registro local consultado | `1`, `champion` |
-| Algoritmo | Regresión Ridge, `alpha=0.1`, `solver=lsqr`, con intercepto |
-| Corrida | `1796edc3b1bf4ecaa87902455d402b88` |
+| Versión y alias en el registro de la demo | `1`, `champion` |
+| Algoritmo | Random Forest para regresión |
+| Parámetros | `max_features=0.5`, `max_samples=0.3`, `min_samples_leaf=50`, `n_jobs=-1` |
+| Run ID | `d6ac04bfac4b4b9498857f1a3cc61f93` |
 | Versión de datos | `v1.0-cec7eeaf7d56` |
-| Periodo general de los datos de la corrida | Octubre de 2025 a septiembre de 2026 |
-| Commit de referencia | `5f6dcbc9a97e62633da49b1b4d5a1ebbfd6313a3` |
+| Periodo de entrenamiento | Octubre de 2025 a agosto de 2026 |
+| Periodo de prueba | Octubre de 2026 |
 
-MLflow registró `git_dirty=true`: había cambios locales al ejecutar el entrenamiento. Para identificar el modelo evaluado se debe consultar la corrida y su artefacto registrado, además del commit.
+El registro de esta corrida indica `git_dirty=true`. Para identificar el modelo evaluado, consulta la corrida y el artefacto asociado a la versión 1 en el registro de la demo.
 
 ## Resultados de evaluación
 
-| Métrica | Entrenamiento | Prueba |
+| Métrica | Entrenamiento | Prueba de octubre de 2026 |
 |---|---:|---:|
-| Error absoluto medio (MAE) | 0.9414 | 0.9513 |
-| Raíz del error cuadrático medio (RMSE) | 1.7715 | 1.7690 |
-| Coeficiente de determinación (R²) | 0.4034 | 0.4069 |
+| Error absoluto medio (MAE) | 0.7566 | 1.1967 |
+| Raíz del error cuadrático medio (RMSE) | 1.5312 | 2.4936 |
+| Coeficiente de determinación (R²) | 0.5529 | 0.4396 |
 
-En prueba, la diferencia absoluta entre la demanda estimada y la observada fue, en promedio, de 0.95 viajes por estación y hora. La etiqueta `date_range` describe la cobertura general de la corrida. El periodo exacto de prueba queda pendiente de verificar.
+En octubre, la diferencia absoluta entre la estimación y los viajes observados fue de 1.20 viajes por estación y hora en promedio.
 
 ## Monitoreo de octubre de 2026
 
@@ -52,7 +53,7 @@ En octubre cambió la distribución del número de salidas por estación y hora.
 
 ## Uso y limitaciones
 
-- La API expone `POST /predict/p1/abtest` y devuelve la estimación junto con el alias de la variante que respondió. El registro local consultado contiene únicamente la versión 1. La comparación con el challenger debe sustentarse con la evidencia del entorno donde se ejecutó el A/B.
+- La ruta `POST /predict/p1` usa el modelo con alias `champion` y devuelve la predicción, el nombre registrado, el alias y la versión. La ruta `POST /predict/p1/abtest` registra qué variante respondió a cada solicitud.
 - El modelo aprende de viajes realizados. Una estación sin bicicletas puede registrar pocas salidas aunque haya personas que quieran usarlas.
 - La métrica promedio combina estaciones y horarios. Para tomar decisiones de redistribución, conviene revisar el error en las estaciones y horas de interés, junto con la disponibilidad de bicicletas.
 
