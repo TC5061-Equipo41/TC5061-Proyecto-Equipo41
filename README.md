@@ -309,6 +309,7 @@ archivo `VERSION` de cada carpeta.
 | ------------------------- | ----------------------------------------------------------- |
 | `GET /health`             | Estado del servicio                                         |
 | `POST /predict/p3`        | Grupo predicho para una estación                            |
+| `POST /predict/p1`        | Viajes predichos, siempre con el modelo actual (`p1_current`) |
 | `POST /predict/p1/abtest` | Viajes predichos para una estación, hora y día de la semana |
 
 ### `POST /predict/p3`
